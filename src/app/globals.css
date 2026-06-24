@@ -1,0 +1,39 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  /* 현장 작업자 환경: 큰 폰트, 높은 대비 */
+  html {
+    font-size: 17px;
+  }
+
+  body {
+    @apply bg-gray-950 text-gray-100 antialiased;
+  }
+
+  /* 모든 버튼/인터랙티브 요소에 최소 터치 영역 보장 */
+  button, a, [role="button"] {
+    min-height: 48px;
+    min-width: 48px;
+  }
+}
+
+@layer components {
+  /* 가동률 상태 배지 */
+  .rack-empty   { @apply bg-green-500 text-white; }
+  .rack-partial { @apply bg-amber-500 text-white; }
+  .rack-full    { @apply bg-red-500 text-white; }
+  .rack-locked  { @apply bg-gray-600 text-gray-400; }
+
+  /* 현장용 기본 카드 */
+  .wms-card {
+    @apply bg-gray-900 border border-gray-700 rounded-xl p-4;
+  }
+
+  /* 인쇄 시 화면 UI 요소 숨김 */
+  @media print {
+    .no-print { display: none !important; }
+    body { background: white; color: black; font-size: 12pt; }
+  }
+}
