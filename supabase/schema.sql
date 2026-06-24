@@ -184,14 +184,14 @@ ALTER TABLE pallet_items  ENABLE ROW LEVEL SECURITY;
 ALTER TABLE inbound_logs  ENABLE ROW LEVEL SECURITY;
 ALTER TABLE outbound_logs ENABLE ROW LEVEL SECURITY;
 
--- 개발 단계: 인증된 사용자 전체 허용 (운영 전 세분화 필요)
-CREATE POLICY "allow_all_authenticated" ON zones         FOR ALL TO authenticated USING (true);
-CREATE POLICY "allow_all_authenticated" ON locations     FOR ALL TO authenticated USING (true);
-CREATE POLICY "allow_all_authenticated" ON products      FOR ALL TO authenticated USING (true);
-CREATE POLICY "allow_all_authenticated" ON pallets       FOR ALL TO authenticated USING (true);
-CREATE POLICY "allow_all_authenticated" ON pallet_items  FOR ALL TO authenticated USING (true);
-CREATE POLICY "allow_all_authenticated" ON inbound_logs  FOR ALL TO authenticated USING (true);
-CREATE POLICY "allow_all_authenticated" ON outbound_logs FOR ALL TO authenticated USING (true);
+-- 내부망 WMS: anon + authenticated 모두 허용 (운영 전 IP 제한 또는 Auth 적용 권장)
+CREATE POLICY "allow_all" ON zones         FOR ALL TO anon, authenticated USING (true) WITH CHECK (true);
+CREATE POLICY "allow_all" ON locations     FOR ALL TO anon, authenticated USING (true) WITH CHECK (true);
+CREATE POLICY "allow_all" ON products      FOR ALL TO anon, authenticated USING (true) WITH CHECK (true);
+CREATE POLICY "allow_all" ON pallets       FOR ALL TO anon, authenticated USING (true) WITH CHECK (true);
+CREATE POLICY "allow_all" ON pallet_items  FOR ALL TO anon, authenticated USING (true) WITH CHECK (true);
+CREATE POLICY "allow_all" ON inbound_logs  FOR ALL TO anon, authenticated USING (true) WITH CHECK (true);
+CREATE POLICY "allow_all" ON outbound_logs FOR ALL TO anon, authenticated USING (true) WITH CHECK (true);
 
 
 -- ──────────────────────────────────────────
