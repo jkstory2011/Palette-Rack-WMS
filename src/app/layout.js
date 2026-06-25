@@ -1,4 +1,5 @@
 import './globals.css'
+import ErrorBoundary from '@/components/ErrorBoundary'
 
 // 모든 페이지 동적 렌더링 강제 — 빌드 시 Supabase 프리렌더 오류 방지
 export const dynamic = 'force-dynamic'
@@ -37,7 +38,9 @@ export default function RootLayout({ children }) {
 
         {/* 메인 컨텐츠 */}
         <main className="p-4 sm:p-6">
-          {children}
+          <ErrorBoundary>
+            {children}
+          </ErrorBoundary>
         </main>
       </body>
     </html>
