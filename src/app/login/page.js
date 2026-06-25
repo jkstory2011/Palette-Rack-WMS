@@ -51,7 +51,7 @@ export default function LoginPage() {
       {/* ── 좌측: 배경 이미지 + 브랜딩 */}
       <div
         className="hidden lg:flex flex-col justify-between flex-1 relative overflow-hidden"
-        style={{ backgroundImage: `url(${BG})`, backgroundSize: 'cover', backgroundPosition: 'center' }}
+        style={{ backgroundImage: `url(${BG})`, backgroundSize: '180%', backgroundPosition: 'center 40%' }}
       >
         {/* 다크 그라디언트 오버레이 */}
         <div className="absolute inset-0"
