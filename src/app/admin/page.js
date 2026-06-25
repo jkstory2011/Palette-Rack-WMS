@@ -90,10 +90,20 @@ export default function AdminPage() {
   }
 
   async function changeRole(user, role) {
+    // 낙관적 업데이트: 먼저 UI 즉시 반영
+    setUsers(prev => prev.map(u => u.id === user.id ? { ...u, role } : u))
     try {
-      await patch(user.id, { role })
-      showToast(`${user.display_name} 권한을 변경했습니다.`)
+      const res  = await fetch(`/api/admin/users/${user.id}`, {
+        method:  'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ role }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || `오류 (${res.status})`)
+      showToast(`${user.display_name} 권한을 ${role === 'admin' ? '관리자' : '직원'}으로 변경했습니다.`)
     } catch (e) {
+      // 실패 시 원래 값으로 롤백
+      setUsers(prev => prev.map(u => u.id === user.id ? { ...u, role: user.role } : u))
       showToast(e.message, 'error')
     }
   }
