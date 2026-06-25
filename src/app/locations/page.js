@@ -324,10 +324,13 @@ function PalletLocationTab() {
   function toggleAll() {
     setSelectedIds(prev => prev.size === locations.length ? new Set() : new Set(locations.map(l => l.id)))
   }
+  const activePallets = (loc) =>
+    (loc.pallets ?? []).filter(p => p.status === 'stored' || p.status === 'pending').length
+
   async function handleBulkDelete() {
     const ids = [...selectedIds]
-    const withPallets  = locations.filter(l => ids.includes(l.id) && (l.pallets?.length ?? 0) > 0)
-    const canDelete    = locations.filter(l => ids.includes(l.id) && !(l.pallets?.length > 0))
+    const withPallets  = locations.filter(l => ids.includes(l.id) && activePallets(l) > 0)
+    const canDelete    = locations.filter(l => ids.includes(l.id) && activePallets(l) === 0)
     if (canDelete.length === 0)
       return alert('선택한 로케이션 모두 파렛트가 있어 삭제할 수 없습니다.')
     let msg = `${canDelete.length}개 로케이션을 삭제할까요?`
@@ -345,8 +348,9 @@ function PalletLocationTab() {
   const fetchLocations = useCallback(async (id) => {
     if (!id) { setLocations([]); return }
     const { data } = await supabase.from('locations')
-      .select('id, code, grid_x, grid_y, aisle, is_active, pallets(id)')
+      .select('id, code, grid_x, grid_y, aisle, is_active, pallets(id, status)')
       .eq('zone_id', id).order('grid_y').order('grid_x')
+    // pallets 배열에 status 포함 → 활성 수량 계산용
     setLocations(data ?? [])
   }, [])
 
@@ -389,8 +393,8 @@ function PalletLocationTab() {
   }
 
   async function handleDelete(loc) {
-    if ((loc.pallets?.length ?? 0) > 0)
-      return alert(`⚠️ 이 로케이션에 파렛트 ${loc.pallets.length}개가 있어 삭제할 수 없습니다.`)
+    if (activePallets(loc) > 0)
+      return alert(`⚠️ 이 로케이션에 파렛트 ${activePallets(loc)}개가 있어 삭제할 수 없습니다.`)
     if (!confirm(`'${loc.code}' 로케이션을 삭제할까요?`)) return
     await supabase.from('locations').delete().eq('id', loc.id); fetchLocations(zoneId)
   }
@@ -528,7 +532,7 @@ function PalletLocationTab() {
                             placeholder="통로" className={`${inputCls} py-1 text-xs w-24`}
                             onKeyDown={e => e.key === 'Enter' && handleEditSave(l)} />
                         </td>
-                        <td className="py-1.5 text-center text-gray-400">{l.pallets?.length ?? 0}</td>
+                        <td className="py-1.5 text-center text-gray-400">{activePallets(l)}</td>
                         <td className="py-1.5 text-center">
                           <button onClick={() => handleToggleActive(l)}
                             className={`text-xs px-2 py-1 rounded-full font-semibold transition-colors ${
@@ -554,7 +558,7 @@ function PalletLocationTab() {
                         <td className="py-2.5 text-center text-gray-400">{l.grid_x}</td>
                         <td className="py-2.5 text-center text-gray-400">{l.grid_y}</td>
                         <td className="py-2.5 text-gray-500 text-xs">{l.aisle ?? '—'}</td>
-                        <td className="py-2.5 text-center text-gray-400">{l.pallets?.length ?? 0}</td>
+                        <td className="py-2.5 text-center text-gray-400">{activePallets(l)}</td>
                         <td className="py-2.5 text-center">
                           <button onClick={() => handleToggleActive(l)}
                             className={`text-xs px-2 py-1 rounded-full font-semibold transition-colors ${
