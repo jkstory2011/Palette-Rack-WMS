@@ -37,6 +37,7 @@ npm install
 cat > .env.local << 'EOF'
 NEXT_PUBLIC_SUPABASE_URL=https://pujcsmlnfcllsgazucen.supabase.co
 NEXT_PUBLIC_SUPABASE_ANON_KEY=sb_publishable_4Gj8yvb3VCnq9rkOXPqiVg_sB-ZbTrS
+SITE_PASSWORD=wjdgkdbs5049?
 EOF
 ```
 
@@ -69,7 +70,7 @@ git push origin main
 ## 참고
 
 | 항목 | 설명 |
-|---|---|
+| --- | --- |
 | `.env.local` | 양쪽 PC 모두 직접 생성 필요 (위 4번 참고) |
 | `node_modules` | 양쪽 PC 모두 `npm install` 각자 실행 |
 | Supabase DB | 클라우드 공유 — 어디서 작업해도 데이터 동일 |
