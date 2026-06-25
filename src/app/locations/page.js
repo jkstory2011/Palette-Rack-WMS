@@ -614,14 +614,14 @@ function BulkLocationModal({ zoneId, zoneName, existingCodes, existingSlots, onC
           ))}
       </div>
       {mode === 'pattern'
-        ? <PatternMode zoneId={zoneId} existingCodes={existingCodes} existingSlots={existingSlots} onClose={onClose} onSuccess={onSuccess} />
-        : <TextMode    zoneId={zoneId} existingCodes={existingCodes}                                onClose={onClose} onSuccess={onSuccess} />}
+        ? <PatternMode zoneId={zoneId} zoneCode={zoneName} existingCodes={existingCodes} existingSlots={existingSlots} onClose={onClose} onSuccess={onSuccess} />
+        : <TextMode    zoneId={zoneId}                     existingCodes={existingCodes}                                onClose={onClose} onSuccess={onSuccess} />}
     </Modal>
   )
 }
 
-function PatternMode({ zoneId, existingCodes, existingSlots, onClose, onSuccess }) {
-  const [cfg, setCfg] = useState({ prefix: '', startNo: 1, endNo: 10, padding: 2, cols: 5, startX: 1, startY: 1, aisle: '' })
+function PatternMode({ zoneId, zoneCode, existingCodes, existingSlots, onClose, onSuccess }) {
+  const [cfg, setCfg] = useState({ prefix: zoneCode ? `${zoneCode}-` : '', startNo: 1, endNo: 10, padding: 2, cols: 5, startX: 1, startY: 1, aisle: '' })
   const [saving, setSaving] = useState(false)
   const [result, setResult] = useState(null)
   const set = (k, v) => setCfg(c => ({ ...c, [k]: v }))
