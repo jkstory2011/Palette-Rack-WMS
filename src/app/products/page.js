@@ -3,7 +3,10 @@
 import { useEffect, useState, useCallback, useRef } from 'react'
 import { supabase } from '@/lib/supabase'
 
-const EMPTY_FORM = { code: '', name: '', unit: 'BOX', barcode: '', client_name: '', expiry_at: '' }
+const EMPTY_FORM = {
+  code: '', name: '', unit: 'BOX', barcode: '',
+  client_name: '', expiry_at: '', mgmt_location: '', box_qty: '',
+}
 
 export default function ProductsPage() {
   const [products, setProducts]               = useState([])
@@ -12,6 +15,7 @@ export default function ProductsPage() {
   const [saving, setSaving]                   = useState(false)
   const [error, setError]                     = useState('')
   const [search, setSearch]                   = useState('')
+  const [clientFilter, setClientFilter]       = useState('전체')
   const [selectedProduct, setSelectedProduct] = useState(null)
   const [rackLocations, setRackLocations]     = useState([])
   const [loadingModal, setLoadingModal]       = useState(false)
@@ -21,7 +25,8 @@ export default function ProductsPage() {
     const { data } = await supabase
       .from('products')
       .select(`
-        id, code, name, unit, barcode, client_name, expiry_at, created_at,
+        id, code, name, unit, barcode, client_name, expiry_at,
+        mgmt_location, box_qty, created_at,
         pallet_items (
           qty,
           pallets ( status, location_id, inbound_at )
@@ -30,7 +35,7 @@ export default function ProductsPage() {
       .order('created_at', { ascending: false })
 
     const enriched = (data ?? []).map((p) => {
-      const stored = (p.pallet_items ?? []).filter((it) => it.pallets?.status === 'stored')
+      const stored    = (p.pallet_items ?? []).filter((it) => it.pallets?.status === 'stored')
       const totalQty  = stored.reduce((s, it) => s + (it.qty ?? 0), 0)
       const storedQty = stored.filter((it) => it.pallets?.location_id != null)
                                .reduce((s, it) => s + (it.qty ?? 0), 0)
@@ -44,6 +49,11 @@ export default function ProductsPage() {
   }
 
   useEffect(() => { fetchProducts() }, [])
+
+  // 화주사 목록 (중복 제거, '전체' 포함)
+  const clientList = ['전체', ...Array.from(
+    new Set(products.map(p => p.client_name).filter(Boolean))
+  ).sort()]
 
   const openModal = useCallback(async (product) => {
     setSelectedProduct(product)
@@ -60,8 +70,6 @@ export default function ProductsPage() {
     setLoadingModal(false)
   }, [])
 
-  const closeModal = useCallback(() => setSelectedProduct(null), [])
-
   async function handleSubmit(e) {
     e.preventDefault()
     setError('')
@@ -71,12 +79,14 @@ export default function ProductsPage() {
     }
     setSaving(true)
     const { error: err } = await supabase.from('products').insert({
-      code:        form.code.trim(),
-      name:        form.name.trim(),
-      unit:        form.unit.trim() || 'EA',
-      barcode:     form.barcode.trim()     || null,
-      client_name: form.client_name.trim() || null,
-      expiry_at:   form.expiry_at          || null,
+      code:          form.code.trim(),
+      name:          form.name.trim(),
+      unit:          form.unit.trim() || 'EA',
+      barcode:       form.barcode.trim()       || null,
+      client_name:   form.client_name.trim()   || null,
+      expiry_at:     form.expiry_at             || null,
+      mgmt_location: form.mgmt_location.trim() || null,
+      box_qty:       form.box_qty ? Number(form.box_qty) : null,
     })
     setSaving(false)
     if (err) {
@@ -93,165 +103,210 @@ export default function ProductsPage() {
     fetchProducts()
   }
 
-  const filtered = products.filter((p) =>
-    p.name.includes(search) ||
-    p.code.toLowerCase().includes(search.toLowerCase()) ||
-    (p.barcode ?? '').includes(search) ||
-    (p.client_name ?? '').includes(search),
-  )
+  // 화주사 + 검색어 필터
+  const filtered = products.filter((p) => {
+    if (clientFilter !== '전체' && p.client_name !== clientFilter) return false
+    if (!search) return true
+    const q = search.toLowerCase()
+    return (
+      p.name.toLowerCase().includes(q) ||
+      p.code.toLowerCase().includes(q) ||
+      (p.barcode ?? '').includes(q) ||
+      (p.client_name ?? '').toLowerCase().includes(q) ||
+      (p.mgmt_location ?? '').toLowerCase().includes(q)
+    )
+  })
 
   return (
-    <div className="max-w-7xl mx-auto space-y-6">
-      <h1 className="text-2xl font-bold text-white">상품 마스터</h1>
+    <div className="flex gap-5 items-start">
 
-      {/* ── 등록 폼 */}
-      <form onSubmit={handleSubmit} className="wms-card space-y-4">
-        <div className="flex items-center justify-between">
-          <h2 className="text-base font-semibold text-gray-300">신규 상품 등록</h2>
-          <button
-            type="button"
-            onClick={() => setShowExcelModal(true)}
-            className="px-4 py-2 rounded-xl bg-emerald-700 hover:bg-emerald-600
-                       text-white text-sm font-semibold transition-colors flex items-center gap-2"
-          >
-            📊 엑셀 일괄등록
+      {/* ── 왼쪽 화주사 사이드바 */}
+      <aside className="w-44 shrink-0 sticky top-20">
+        <div className="wms-card p-3 space-y-1">
+          <p className="text-xs font-semibold text-gray-500 px-2 pb-1">화주사</p>
+          {clientList.map(client => (
+            <button key={client}
+              onClick={() => setClientFilter(client)}
+              className={`w-full text-left px-3 py-2 rounded-xl text-sm transition-colors truncate ${
+                clientFilter === client
+                  ? 'bg-blue-600 text-white font-semibold'
+                  : 'text-gray-400 hover:bg-gray-700 hover:text-white'
+              }`}>
+              {client === '전체' ? '📦 전체' : client}
+              {client !== '전체' && (
+                <span className="ml-1 text-xs text-gray-500">
+                  ({products.filter(p => p.client_name === client).length})
+                </span>
+              )}
+            </button>
+          ))}
+          {clientList.length === 1 && (
+            <p className="text-xs text-gray-600 px-2 py-1">등록된 화주사 없음</p>
+          )}
+        </div>
+      </aside>
+
+      {/* ── 오른쪽 메인 */}
+      <div className="flex-1 min-w-0 space-y-6">
+        <h1 className="text-2xl font-bold text-white">상품 마스터</h1>
+
+        {/* ── 등록 폼 */}
+        <form onSubmit={handleSubmit} className="wms-card space-y-4">
+          <div className="flex items-center justify-between">
+            <h2 className="text-base font-semibold text-gray-300">신규 상품 등록</h2>
+            <button type="button" onClick={() => setShowExcelModal(true)}
+              className="px-4 py-2 rounded-xl bg-emerald-700 hover:bg-emerald-600
+                         text-white text-sm font-semibold transition-colors flex items-center gap-2">
+              📊 엑셀 일괄등록
+            </button>
+          </div>
+
+          {/* 기본 정보 */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <FieldInput label="상품코드 *" placeholder="PRD-001"
+              value={form.code} onChange={v => setForm(f => ({ ...f, code: v }))} />
+            <FieldInput label="상품명 *" placeholder="삼다수 2L 6입"
+              value={form.name} onChange={v => setForm(f => ({ ...f, name: v }))} />
+            <FieldInput label="바코드" placeholder="8801234567890"
+              value={form.barcode} onChange={v => setForm(f => ({ ...f, barcode: v }))} />
+            <FieldInput label="단위" placeholder="BOX / EA / SET"
+              value={form.unit} onChange={v => setForm(f => ({ ...f, unit: v }))} />
+          </div>
+
+          {/* 추가 정보 */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <FieldInput label="화주사명" placeholder="(주)OO물류"
+              value={form.client_name} onChange={v => setForm(f => ({ ...f, client_name: v }))} />
+            <div className="flex flex-col gap-1.5">
+              <label className="text-xs font-medium text-gray-400">유통/취급기한</label>
+              <input type="date" value={form.expiry_at}
+                onChange={e => setForm(f => ({ ...f, expiry_at: e.target.value }))}
+                className={inputCls} />
+            </div>
+            <FieldInput label="상품관리 로케이션" placeholder="A-01, B구역 등"
+              value={form.mgmt_location} onChange={v => setForm(f => ({ ...f, mgmt_location: v }))} />
+            <FieldInput label="BOX 내품수량" placeholder="24" type="number"
+              value={form.box_qty} onChange={v => setForm(f => ({ ...f, box_qty: v }))} />
+          </div>
+
+          {error && <p className="text-sm text-red-400">{error}</p>}
+
+          <button type="submit" disabled={saving}
+            className="w-full sm:w-auto px-8 py-3 rounded-xl bg-blue-600 hover:bg-blue-500
+                       text-white font-semibold transition-colors disabled:opacity-40">
+            {saving ? '등록 중...' : '+ 상품 등록'}
           </button>
-        </div>
+        </form>
 
-        <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
-          <FieldInput label="상품코드 *" placeholder="PRD-001"
-            value={form.code} onChange={(v) => setForm((f) => ({ ...f, code: v }))} />
-          <FieldInput label="상품명 *" placeholder="삼다수 2L 6입"
-            value={form.name} onChange={(v) => setForm((f) => ({ ...f, name: v }))} />
-          <FieldInput label="바코드" placeholder="8801234567890"
-            value={form.barcode} onChange={(v) => setForm((f) => ({ ...f, barcode: v }))} />
-          <FieldInput label="단위" placeholder="BOX / EA / SET"
-            value={form.unit} onChange={(v) => setForm((f) => ({ ...f, unit: v }))} />
-        </div>
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          <FieldInput label="화주사명" placeholder="(주)OO물류"
-            value={form.client_name} onChange={(v) => setForm((f) => ({ ...f, client_name: v }))} />
-          <div className="flex flex-col gap-1.5">
-            <label className="text-xs font-medium text-gray-400">유통/취급기한</label>
-            <input
-              type="date"
-              value={form.expiry_at}
-              onChange={(e) => setForm((f) => ({ ...f, expiry_at: e.target.value }))}
-              className="bg-gray-800 border border-gray-600 rounded-xl px-4 py-3
-                         text-white text-sm focus:outline-none
-                         focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500"
-            />
+        {/* ── 검색 + 목록 */}
+        <div className="wms-card space-y-4">
+          <div className="flex items-center justify-between gap-3">
+            <h2 className="text-base font-semibold text-gray-300">
+              {clientFilter === '전체' ? '전체 상품' : clientFilter}
+              <span className="text-gray-500 font-normal ml-1">({filtered.length}종)</span>
+            </h2>
+            <input type="search" placeholder="코드, 이름, 바코드, 로케이션 검색..."
+              value={search} onChange={e => setSearch(e.target.value)}
+              className="bg-gray-800 border border-gray-600 rounded-xl px-4 py-2
+                         text-white text-sm placeholder-gray-500 focus:outline-none
+                         focus:ring-2 focus:ring-blue-500/50 w-60" />
           </div>
-        </div>
 
-        {error && <p className="text-sm text-red-400">{error}</p>}
+          {loading ? (
+            <p className="text-center text-gray-500 py-8 animate-pulse">불러오는 중...</p>
+          ) : filtered.length === 0 ? (
+            <p className="text-center text-gray-600 py-8">등록된 상품이 없습니다.</p>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm min-w-[1100px]">
+                <thead>
+                  <tr className="text-left text-xs text-gray-500 border-b border-gray-700">
+                    <th className="pb-2 font-medium pr-3 w-24">상품코드</th>
+                    <th className="pb-2 font-medium pr-3">상품명</th>
+                    <th className="pb-2 font-medium pr-3 w-28">화주사명</th>
+                    <th className="pb-2 font-medium pr-3 w-28">관리 로케이션</th>
+                    <th className="pb-2 font-medium pr-3 w-20 text-center">내품수량</th>
+                    <th className="pb-2 font-medium pr-3 w-28">바코드</th>
+                    <th className="pb-2 font-medium pr-3 w-24">입고일</th>
+                    <th className="pb-2 font-medium pr-3 w-24">유통기한</th>
+                    <th className="pb-2 font-medium text-right pr-3 w-20">전체재고</th>
+                    <th className="pb-2 font-medium text-right pr-3 w-20">현적재</th>
+                    <th className="pb-2 w-10" />
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-800">
+                  {filtered.map((p) => {
+                    const now      = new Date()
+                    const expiry   = p.expiry_at ? new Date(p.expiry_at) : null
+                    const daysLeft = expiry ? Math.ceil((expiry - now) / 86400000) : null
+                    const isExpired      = daysLeft !== null && daysLeft <= 0
+                    const isExpiringSoon = daysLeft !== null && daysLeft > 0 && daysLeft <= 30
 
-        <button type="submit" disabled={saving}
-          className="w-full sm:w-auto px-8 py-3 rounded-xl bg-blue-600 hover:bg-blue-500
-                     text-white font-semibold transition-colors disabled:opacity-40">
-          {saving ? '등록 중...' : '+ 상품 등록'}
-        </button>
-      </form>
-
-      {/* ── 검색 + 목록 */}
-      <div className="wms-card space-y-4">
-        <div className="flex items-center justify-between gap-3">
-          <h2 className="text-base font-semibold text-gray-300">
-            전체 상품 <span className="text-gray-500 font-normal">({products.length}종)</span>
-          </h2>
-          <input
-            type="search"
-            placeholder="코드, 이름, 바코드, 화주사 검색..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="bg-gray-800 border border-gray-600 rounded-xl px-4 py-2
-                       text-white text-sm placeholder-gray-500 focus:outline-none
-                       focus:ring-2 focus:ring-blue-500/50 w-64"
-          />
-        </div>
-
-        {loading ? (
-          <p className="text-center text-gray-500 py-8 animate-pulse">불러오는 중...</p>
-        ) : filtered.length === 0 ? (
-          <p className="text-center text-gray-600 py-8">등록된 상품이 없습니다.</p>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm min-w-[1000px]">
-              <thead>
-                <tr className="text-left text-xs text-gray-500 border-b border-gray-700">
-                  <th className="pb-2 font-medium pr-4 w-28">상품코드</th>
-                  <th className="pb-2 font-medium pr-4">상품명</th>
-                  <th className="pb-2 font-medium pr-4 w-32">화주사명</th>
-                  <th className="pb-2 font-medium pr-4 w-32">바코드</th>
-                  <th className="pb-2 font-medium pr-4 w-24">입고일</th>
-                  <th className="pb-2 font-medium pr-4 w-28">유통/취급기한</th>
-                  <th className="pb-2 font-medium text-right pr-4 w-24">전체재고수량</th>
-                  <th className="pb-2 font-medium text-right pr-4 w-24">현적재수량</th>
-                  <th className="pb-2 w-10" />
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-800">
-                {filtered.map((p) => {
-                  const now      = new Date()
-                  const expiry   = p.expiry_at ? new Date(p.expiry_at) : null
-                  const daysLeft = expiry ? Math.ceil((expiry - now) / 86400000) : null
-                  const isExpired      = daysLeft !== null && daysLeft <= 0
-                  const isExpiringSoon = daysLeft !== null && daysLeft > 0 && daysLeft <= 30
-
-                  return (
-                    <tr key={p.id} onClick={() => openModal(p)}
-                      className="hover:bg-gray-800/60 transition-colors cursor-pointer">
-                      <td className="py-3 font-mono text-gray-300 pr-4 text-xs">{p.code}</td>
-                      <td className="py-3 pr-4">
-                        <span className="text-white font-medium">{p.name}</span>
-                        <span className="text-gray-600 text-xs ml-2">{p.unit}</span>
-                      </td>
-                      <td className="py-3 pr-4 text-xs text-gray-400">
-                        {p.client_name ?? <span className="text-gray-700">—</span>}
-                      </td>
-                      <td className="py-3 font-mono text-gray-400 pr-4 text-xs">
-                        {p.barcode ?? <span className="text-gray-700">—</span>}
-                      </td>
-                      <td className="py-3 text-gray-400 text-xs pr-4">
-                        {p.lastInbound
-                          ? new Date(p.lastInbound).toLocaleDateString('ko-KR')
-                          : <span className="text-gray-700">—</span>}
-                      </td>
-                      <td className="py-3 text-xs pr-4">
-                        {expiry ? (
-                          <span className={
-                            isExpired ? 'text-red-500 font-bold'
-                            : isExpiringSoon ? 'text-yellow-400 font-semibold'
-                            : 'text-gray-400'
-                          }>
-                            {expiry.toLocaleDateString('ko-KR')}
-                            {isExpired      && ' ⚠'}
-                            {isExpiringSoon && ` (D-${daysLeft})`}
+                    return (
+                      <tr key={p.id} onClick={() => openModal(p)}
+                        className="hover:bg-gray-800/60 transition-colors cursor-pointer">
+                        <td className="py-3 font-mono text-gray-300 pr-3 text-xs">{p.code}</td>
+                        <td className="py-3 pr-3">
+                          <span className="text-white font-medium">{p.name}</span>
+                          <span className="text-gray-600 text-xs ml-1.5">{p.unit}</span>
+                        </td>
+                        <td className="py-3 pr-3 text-xs text-gray-400">
+                          {p.client_name
+                            ? <span className="bg-gray-700 text-gray-300 px-2 py-0.5 rounded-full">{p.client_name}</span>
+                            : <span className="text-gray-700">—</span>}
+                        </td>
+                        {/* 관리 로케이션 */}
+                        <td className="py-3 pr-3 text-xs">
+                          {p.mgmt_location
+                            ? <span className="text-blue-300 font-mono bg-blue-600/10 border border-blue-600/20 px-2 py-0.5 rounded">
+                                {p.mgmt_location}
+                              </span>
+                            : <span className="text-gray-700">—</span>}
+                        </td>
+                        {/* BOX 내품수량 */}
+                        <td className="py-3 pr-3 text-center text-xs">
+                          {p.box_qty
+                            ? <span className="text-yellow-400 font-bold">{p.box_qty.toLocaleString()}</span>
+                            : <span className="text-gray-700">—</span>}
+                        </td>
+                        <td className="py-3 font-mono text-gray-400 pr-3 text-xs">
+                          {p.barcode ?? <span className="text-gray-700">—</span>}
+                        </td>
+                        <td className="py-3 text-gray-400 text-xs pr-3">
+                          {p.lastInbound
+                            ? new Date(p.lastInbound).toLocaleDateString('ko-KR')
+                            : <span className="text-gray-700">—</span>}
+                        </td>
+                        <td className="py-3 text-xs pr-3">
+                          {expiry ? (
+                            <span className={isExpired ? 'text-red-500 font-bold' : isExpiringSoon ? 'text-yellow-400 font-semibold' : 'text-gray-400'}>
+                              {expiry.toLocaleDateString('ko-KR')}
+                              {isExpired && ' ⚠'}{isExpiringSoon && ` D-${daysLeft}`}
+                            </span>
+                          ) : <span className="text-gray-700">—</span>}
+                        </td>
+                        <td className="py-3 text-right font-mono text-gray-300 pr-3">
+                          {p.totalQty > 0 ? p.totalQty.toLocaleString() : <span className="text-gray-700">0</span>}
+                        </td>
+                        <td className="py-3 text-right font-mono pr-3">
+                          <span className={p.storedQty > 0 ? 'text-green-400 font-semibold' : 'text-gray-600'}>
+                            {p.storedQty.toLocaleString()}
                           </span>
-                        ) : <span className="text-gray-700">—</span>}
-                      </td>
-                      <td className="py-3 text-right font-mono text-gray-300 pr-4">
-                        {p.totalQty > 0 ? p.totalQty.toLocaleString() : <span className="text-gray-700">0</span>}
-                      </td>
-                      <td className="py-3 text-right font-mono pr-4">
-                        <span className={p.storedQty > 0 ? 'text-green-400 font-semibold' : 'text-gray-600'}>
-                          {p.storedQty.toLocaleString()}
-                        </span>
-                      </td>
-                      <td className="py-3 text-right">
-                        <button
-                          onClick={(e) => { e.stopPropagation(); handleDelete(p.id) }}
-                          className="text-xs text-gray-600 hover:text-red-400 transition-colors px-2 py-1"
-                        >삭제</button>
-                      </td>
-                    </tr>
-                  )
-                })}
-              </tbody>
-            </table>
-          </div>
-        )}
+                        </td>
+                        <td className="py-3 text-right">
+                          <button onClick={e => { e.stopPropagation(); handleDelete(p.id) }}
+                            className="text-xs text-gray-600 hover:text-red-400 transition-colors px-2 py-1">
+                            삭제
+                          </button>
+                        </td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
       </div>
 
       {/* ── 로케이션 팝업 */}
@@ -260,7 +315,7 @@ export default function ProductsPage() {
           product={selectedProduct}
           locations={rackLocations}
           loading={loadingModal}
-          onClose={closeModal}
+          onClose={() => setSelectedProduct(null)}
         />
       )}
 
@@ -277,29 +332,26 @@ export default function ProductsPage() {
 
 /* ── 엑셀 일괄등록 모달 */
 function ExcelImportModal({ onClose, onSuccess }) {
-  const fileRef   = useRef(null)
-  const [rows, setRows]         = useState([])     // 파싱된 미리보기 행
-  const [importing, setImporting] = useState(false)
-  const [result, setResult]     = useState(null)   // { success, skipped, errors }
+  const fileRef = useRef(null)
+  const [rows, setRows]             = useState([])
+  const [importing, setImporting]   = useState(false)
+  const [result, setResult]         = useState(null)
   const [parseError, setParseError] = useState('')
 
   useEffect(() => {
-    const handler = (e) => { if (e.key === 'Escape') onClose() }
+    const handler = e => { if (e.key === 'Escape') onClose() }
     window.addEventListener('keydown', handler)
     return () => window.removeEventListener('keydown', handler)
   }, [onClose])
 
-  // 엑셀 날짜 시리얼 → YYYY-MM-DD
   function excelDateToStr(val) {
     if (!val) return null
     if (typeof val === 'number') {
-      // Excel 날짜 시리얼 변환
       const date = new Date((val - 25569) * 86400 * 1000)
       return date.toISOString().slice(0, 10)
     }
     const s = String(val).trim()
     if (!s) return null
-    // YYYY-MM-DD / YYYY/MM/DD / YY-MM-DD 등 처리
     const m = s.match(/(\d{2,4})[\/\-\.](\d{1,2})[\/\-\.](\d{1,2})/)
     if (m) {
       const y = m[1].length === 2 ? `20${m[1]}` : m[1]
@@ -314,32 +366,26 @@ function ExcelImportModal({ onClose, onSuccess }) {
     setParseError('')
     setRows([])
     setResult(null)
-
     try {
       const XLSX = await import('xlsx')
       const buffer = await file.arrayBuffer()
       const wb = XLSX.read(buffer, { type: 'array' })
       const ws = wb.Sheets[wb.SheetNames[0]]
       const raw = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '' })
-
-      // 첫 행 = 헤더, 나머지 = 데이터
-      const dataRows = raw.slice(1).filter((r) => r.some((c) => String(c).trim()))
-
+      const dataRows = raw.slice(1).filter(r => r.some(c => String(c).trim()))
       const parsed = dataRows.map((r, i) => ({
-        _row: i + 2,
-        code:        String(r[0] ?? '').trim(),
-        name:        String(r[1] ?? '').trim(),
-        unit:        String(r[2] ?? '').trim() || 'BOX',
-        barcode:     String(r[3] ?? '').trim() || null,
-        client_name: String(r[4] ?? '').trim() || null,
-        expiry_at:   excelDateToStr(r[5]),
-        _valid:      !!(String(r[0] ?? '').trim() && String(r[1] ?? '').trim()),
+        _row:          i + 2,
+        code:          String(r[0] ?? '').trim(),
+        name:          String(r[1] ?? '').trim(),
+        unit:          String(r[2] ?? '').trim() || 'BOX',
+        barcode:       String(r[3] ?? '').trim() || null,
+        client_name:   String(r[4] ?? '').trim() || null,
+        expiry_at:     excelDateToStr(r[5]),
+        mgmt_location: String(r[6] ?? '').trim() || null,
+        box_qty:       r[7] ? Number(r[7]) || null : null,
+        _valid:        !!(String(r[0] ?? '').trim() && String(r[1] ?? '').trim()),
       }))
-
-      if (parsed.length === 0) {
-        setParseError('데이터가 없습니다. 양식을 확인해주세요.')
-        return
-      }
+      if (parsed.length === 0) { setParseError('데이터가 없습니다. 양식을 확인해주세요.'); return }
       setRows(parsed)
     } catch (err) {
       setParseError('파일을 읽는 중 오류가 발생했습니다: ' + err.message)
@@ -349,147 +395,112 @@ function ExcelImportModal({ onClose, onSuccess }) {
   async function downloadTemplate() {
     const XLSX = await import('xlsx')
     const ws = XLSX.utils.aoa_to_sheet([
-      ['상품코드*', '상품명*', '단위', '바코드', '화주사명', '유통/취급기한(YYYY-MM-DD)'],
-      ['PRD-001', '삼다수 2L 6입', 'BOX', '8801234567890', '(주)샘물', '2026-12-31'],
-      ['PRD-002', '포카리스웨트 500ml', 'EA', '8801095814050', '(주)동아오츠카', '2026-06-30'],
+      ['상품코드*', '상품명*', '단위', '바코드', '화주사명', '유통기한(YYYY-MM-DD)', '관리로케이션', 'BOX내품수'],
+      ['PRD-001', '삼다수 2L 6입', 'BOX', '8801234567890', '(주)샘물', '2026-12-31', 'A-01', 24],
+      ['PRD-002', '포카리스웨트 500ml', 'EA', '8801095814050', '(주)동아오츠카', '2026-06-30', 'B-02', 12],
     ])
-    // 열 너비 설정
-    ws['!cols'] = [{ wch: 14 }, { wch: 24 }, { wch: 8 }, { wch: 16 }, { wch: 18 }, { wch: 22 }]
+    ws['!cols'] = [{ wch:14 },{ wch:24 },{ wch:8 },{ wch:16 },{ wch:18 },{ wch:22 },{ wch:14 },{ wch:10 }]
     const wb = XLSX.utils.book_new()
     XLSX.utils.book_append_sheet(wb, ws, '상품목록')
     XLSX.writeFile(wb, '상품등록양식.xlsx')
   }
 
   async function handleImport() {
-    const validRows = rows.filter((r) => r._valid)
+    const validRows = rows.filter(r => r._valid)
     if (validRows.length === 0) return
-
     setImporting(true)
-    let success = 0
-    let skipped = 0
+    let success = 0, skipped = 0
     const errors = []
-
     for (const row of validRows) {
       const { error } = await supabase.from('products').insert({
-        code:        row.code,
-        name:        row.name,
-        unit:        row.unit,
-        barcode:     row.barcode,
-        client_name: row.client_name,
-        expiry_at:   row.expiry_at,
+        code:          row.code,
+        name:          row.name,
+        unit:          row.unit,
+        barcode:       row.barcode,
+        client_name:   row.client_name,
+        expiry_at:     row.expiry_at,
+        mgmt_location: row.mgmt_location,
+        box_qty:       row.box_qty,
       })
-      if (!error) {
-        success++
-      } else if (error.code === '23505') {
-        skipped++
-      } else {
-        errors.push(`${row.code}: ${error.message}`)
-      }
+      if (!error)             success++
+      else if (error.code === '23505') skipped++
+      else errors.push(`${row.code}: ${error.message}`)
     }
-
     setImporting(false)
     setResult({ success, skipped, errors })
     if (success > 0) onSuccess()
   }
 
-  const validCount   = rows.filter((r) => r._valid).length
-  const invalidCount = rows.filter((r) => !r._valid).length
+  const validCount   = rows.filter(r => r._valid).length
+  const invalidCount = rows.filter(r => !r._valid).length
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4"
       style={{ backgroundColor: 'rgba(0,0,0,0.75)' }} onClick={onClose}>
-      <div className="bg-gray-900 border border-gray-700 rounded-2xl w-full max-w-4xl
-                      shadow-2xl max-h-[90vh] flex flex-col"
-        onClick={(e) => e.stopPropagation()}>
+      <div className="bg-gray-900 border border-gray-700 rounded-2xl w-full max-w-5xl
+                      shadow-2xl max-h-[90vh] flex flex-col" onClick={e => e.stopPropagation()}>
 
-        {/* 헤더 */}
         <div className="flex items-center justify-between p-6 border-b border-gray-700">
           <div>
             <h2 className="text-lg font-bold text-white">📊 엑셀 일괄등록</h2>
-            <p className="text-xs text-gray-500 mt-1">
-              엑셀 양식을 다운로드해 작성 후 업로드하세요. 중복 상품코드는 자동 건너뜁니다.
-            </p>
+            <p className="text-xs text-gray-500 mt-1">양식을 다운로드해 작성 후 업로드하세요. 중복 상품코드는 자동 건너뜁니다.</p>
           </div>
-          <button onClick={onClose}
-            className="text-gray-500 hover:text-white transition-colors text-2xl leading-none ml-4">
-            ✕
-          </button>
+          <button onClick={onClose} className="text-gray-500 hover:text-white text-2xl leading-none ml-4">✕</button>
         </div>
 
         <div className="overflow-y-auto flex-1 p-6 space-y-5">
-
-          {/* Step 1: 양식 다운로드 */}
           <div className="flex items-center gap-4">
             <div className="flex-1">
               <p className="text-sm font-semibold text-gray-300 mb-1">① 양식 다운로드</p>
-              <p className="text-xs text-gray-500">
-                열 순서: 상품코드* / 상품명* / 단위 / 바코드 / 화주사명 / 유통기한
-              </p>
+              <p className="text-xs text-gray-500">열 순서: 상품코드* / 상품명* / 단위 / 바코드 / 화주사명 / 유통기한 / 관리로케이션 / BOX내품수</p>
             </div>
-            <button
-              onClick={downloadTemplate}
-              className="px-4 py-2 rounded-xl bg-gray-700 hover:bg-gray-600
-                         text-white text-sm font-semibold transition-colors whitespace-nowrap"
-            >
+            <button onClick={downloadTemplate}
+              className="px-4 py-2 rounded-xl bg-gray-700 hover:bg-gray-600 text-white text-sm font-semibold transition-colors whitespace-nowrap">
               ⬇ 양식 다운로드
             </button>
           </div>
 
           <div className="border-t border-gray-800" />
 
-          {/* Step 2: 파일 업로드 */}
           <div>
             <p className="text-sm font-semibold text-gray-300 mb-3">② 파일 업로드</p>
-            <div
-              onClick={() => fileRef.current?.click()}
-              className="border-2 border-dashed border-gray-600 hover:border-emerald-500
-                         rounded-xl p-8 text-center cursor-pointer transition-colors"
-            >
-              <p className="text-gray-400 text-sm">
-                클릭하여 파일 선택 (.xlsx, .xls)
-              </p>
+            <div onClick={() => fileRef.current?.click()}
+              className="border-2 border-dashed border-gray-600 hover:border-emerald-500 rounded-xl p-8 text-center cursor-pointer transition-colors">
+              <p className="text-gray-400 text-sm">클릭하여 파일 선택 (.xlsx, .xls)</p>
               <p className="text-gray-600 text-xs mt-1">또는 파일을 이 영역으로 드래그</p>
-              <input
-                ref={fileRef}
-                type="file"
-                accept=".xlsx,.xls"
-                className="hidden"
-                onChange={handleFile}
-              />
+              <input ref={fileRef} type="file" accept=".xlsx,.xls" className="hidden" onChange={handleFile} />
             </div>
             {parseError && <p className="text-red-400 text-sm mt-2">{parseError}</p>}
           </div>
 
-          {/* Step 3: 미리보기 */}
           {rows.length > 0 && !result && (
             <div>
               <div className="flex items-center justify-between mb-3">
                 <p className="text-sm font-semibold text-gray-300">③ 미리보기</p>
                 <div className="flex items-center gap-3 text-xs">
                   <span className="text-emerald-400">유효 {validCount}건</span>
-                  {invalidCount > 0 && (
-                    <span className="text-red-400">필수값 누락 {invalidCount}건 (건너뜀)</span>
-                  )}
+                  {invalidCount > 0 && <span className="text-red-400">필수값 누락 {invalidCount}건 (건너뜀)</span>}
                 </div>
               </div>
               <div className="overflow-x-auto rounded-xl border border-gray-700 max-h-60">
-                <table className="w-full text-xs min-w-[700px]">
+                <table className="w-full text-xs min-w-[900px]">
                   <thead className="bg-gray-800 sticky top-0">
                     <tr className="text-gray-400">
                       <th className="px-3 py-2 text-left font-medium w-10">행</th>
                       <th className="px-3 py-2 text-left font-medium">상품코드</th>
                       <th className="px-3 py-2 text-left font-medium">상품명</th>
-                      <th className="px-3 py-2 text-left font-medium w-16">단위</th>
+                      <th className="px-3 py-2 text-left font-medium w-14">단위</th>
                       <th className="px-3 py-2 text-left font-medium">바코드</th>
                       <th className="px-3 py-2 text-left font-medium">화주사명</th>
                       <th className="px-3 py-2 text-left font-medium">유통기한</th>
-                      <th className="px-3 py-2 text-center font-medium w-14">상태</th>
+                      <th className="px-3 py-2 text-left font-medium">관리로케이션</th>
+                      <th className="px-3 py-2 text-right font-medium">BOX내품수</th>
+                      <th className="px-3 py-2 text-center font-medium w-12">상태</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-800">
-                    {rows.map((r) => (
-                      <tr key={r._row}
-                        className={r._valid ? 'hover:bg-gray-800/40' : 'bg-red-900/10'}>
+                    {rows.map(r => (
+                      <tr key={r._row} className={r._valid ? 'hover:bg-gray-800/40' : 'bg-red-900/10'}>
                         <td className="px-3 py-2 text-gray-600">{r._row}</td>
                         <td className="px-3 py-2 font-mono text-gray-300">{r.code || <span className="text-red-400">없음</span>}</td>
                         <td className="px-3 py-2 text-white">{r.name || <span className="text-red-400">없음</span>}</td>
@@ -497,10 +508,10 @@ function ExcelImportModal({ onClose, onSuccess }) {
                         <td className="px-3 py-2 text-gray-500">{r.barcode ?? '—'}</td>
                         <td className="px-3 py-2 text-gray-500">{r.client_name ?? '—'}</td>
                         <td className="px-3 py-2 text-gray-500">{r.expiry_at ?? '—'}</td>
+                        <td className="px-3 py-2 text-gray-500">{r.mgmt_location ?? '—'}</td>
+                        <td className="px-3 py-2 text-right text-gray-500">{r.box_qty ?? '—'}</td>
                         <td className="px-3 py-2 text-center">
-                          {r._valid
-                            ? <span className="text-emerald-400">✓</span>
-                            : <span className="text-red-400">✗</span>}
+                          {r._valid ? <span className="text-emerald-400">✓</span> : <span className="text-red-400">✗</span>}
                         </td>
                       </tr>
                     ))}
@@ -510,15 +521,12 @@ function ExcelImportModal({ onClose, onSuccess }) {
             </div>
           )}
 
-          {/* 결과 */}
           {result && (
             <div className="rounded-xl border border-gray-700 p-5 space-y-2">
               <p className="text-sm font-semibold text-white">등록 완료</p>
               <div className="flex items-center gap-6 text-sm">
                 <span className="text-emerald-400 font-bold">✓ 등록 성공 {result.success}건</span>
-                {result.skipped > 0 && (
-                  <span className="text-yellow-400">⚠ 중복 건너뜀 {result.skipped}건</span>
-                )}
+                {result.skipped > 0 && <span className="text-yellow-400">⚠ 중복 건너뜀 {result.skipped}건</span>}
               </div>
               {result.errors.length > 0 && (
                 <div className="mt-2 text-xs text-red-400 space-y-1">
@@ -529,20 +537,15 @@ function ExcelImportModal({ onClose, onSuccess }) {
           )}
         </div>
 
-        {/* 하단 버튼 */}
         <div className="p-6 border-t border-gray-700 flex items-center justify-end gap-3">
           <button onClick={onClose}
-            className="px-5 py-2.5 rounded-xl bg-gray-700 hover:bg-gray-600
-                       text-white text-sm font-semibold transition-colors">
+            className="px-5 py-2.5 rounded-xl bg-gray-700 hover:bg-gray-600 text-white text-sm font-semibold transition-colors">
             닫기
           </button>
           {rows.length > 0 && !result && (
-            <button
-              onClick={handleImport}
-              disabled={importing || validCount === 0}
+            <button onClick={handleImport} disabled={importing || validCount === 0}
               className="px-6 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500
-                         disabled:opacity-40 text-white text-sm font-semibold transition-colors"
-            >
+                         disabled:opacity-40 text-white text-sm font-semibold transition-colors">
               {importing ? '등록 중...' : `📥 ${validCount}건 등록`}
             </button>
           )}
@@ -555,7 +558,7 @@ function ExcelImportModal({ onClose, onSuccess }) {
 /* ── 로케이션 팝업 */
 function LocationModal({ product, locations, loading, onClose }) {
   useEffect(() => {
-    const handler = (e) => { if (e.key === 'Escape') onClose() }
+    const handler = e => { if (e.key === 'Escape') onClose() }
     window.addEventListener('keydown', handler)
     return () => window.removeEventListener('keydown', handler)
   }, [onClose])
@@ -566,36 +569,34 @@ function LocationModal({ product, locations, loading, onClose }) {
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4"
       style={{ backgroundColor: 'rgba(0,0,0,0.7)' }} onClick={onClose}>
       <div className="bg-gray-900 border border-gray-700 rounded-2xl w-full max-w-2xl
-                      shadow-2xl max-h-[80vh] flex flex-col"
-        onClick={(e) => e.stopPropagation()}>
+                      shadow-2xl max-h-[80vh] flex flex-col" onClick={e => e.stopPropagation()}>
 
         <div className="flex items-start justify-between p-6 border-b border-gray-700">
           <div>
             <div className="flex items-center gap-2 flex-wrap">
               <span className="text-xs font-mono text-gray-500">{product.code}</span>
               {product.client_name && (
-                <span className="text-xs bg-gray-700 text-gray-300 px-2 py-0.5 rounded-full">
-                  {product.client_name}
-                </span>
+                <span className="text-xs bg-gray-700 text-gray-300 px-2 py-0.5 rounded-full">{product.client_name}</span>
               )}
             </div>
             <h2 className="text-lg font-bold text-white mt-1">{product.name}</h2>
-            <p className="text-sm text-gray-400 mt-1">
-              현재 적재 위치 ·{' '}
-              <span className="text-green-400 font-semibold">
-                총 {totalQty.toLocaleString()} {product.unit}
-              </span>
-            </p>
-            {product.expiry_at && (
-              <p className="text-xs text-gray-500 mt-0.5">
-                유통기한: {new Date(product.expiry_at).toLocaleDateString('ko-KR')}
+            <div className="flex items-center gap-4 mt-1 flex-wrap">
+              <p className="text-sm text-gray-400">
+                현재 적재 위치 · <span className="text-green-400 font-semibold">총 {totalQty.toLocaleString()} {product.unit}</span>
               </p>
-            )}
+              {product.mgmt_location && (
+                <span className="text-xs text-blue-300 font-mono bg-blue-600/10 border border-blue-600/20 px-2 py-0.5 rounded">
+                  📍 {product.mgmt_location}
+                </span>
+              )}
+              {product.box_qty && (
+                <span className="text-xs text-yellow-400 bg-yellow-900/20 border border-yellow-800/30 px-2 py-0.5 rounded">
+                  📦 {product.box_qty}개입
+                </span>
+              )}
+            </div>
           </div>
-          <button onClick={onClose}
-            className="text-gray-500 hover:text-white transition-colors text-2xl leading-none ml-4">
-            ✕
-          </button>
+          <button onClick={onClose} className="text-gray-500 hover:text-white text-2xl leading-none ml-4">✕</button>
         </div>
 
         <div className="overflow-y-auto flex-1 p-6">
@@ -641,12 +642,9 @@ function LocationModal({ product, locations, loading, onClose }) {
                             : 'bg-orange-600/20 text-orange-300 border border-orange-500/30'
                         }`}>{it.pallets?.side === 'L' ? '좌' : '우'}</span>
                       </td>
-                      <td className="py-3 text-right font-mono font-bold text-green-400">
-                        {(it.qty ?? 0).toLocaleString()}
-                      </td>
+                      <td className="py-3 text-right font-mono font-bold text-green-400">{(it.qty ?? 0).toLocaleString()}</td>
                       <td className="py-3 text-right text-xs text-gray-500">
-                        {it.pallets?.inbound_at
-                          ? new Date(it.pallets.inbound_at).toLocaleDateString('ko-KR') : '—'}
+                        {it.pallets?.inbound_at ? new Date(it.pallets.inbound_at).toLocaleDateString('ko-KR') : '—'}
                       </td>
                       <td className="py-3 text-right text-xs">
                         {expiry ? (
@@ -674,19 +672,22 @@ function LocationModal({ product, locations, loading, onClose }) {
   )
 }
 
-function FieldInput({ label, value, onChange, placeholder, className = '' }) {
+function FieldInput({ label, value, onChange, placeholder, type = 'text', className = '' }) {
   return (
     <div className={`flex flex-col gap-1.5 ${className}`}>
       <label className="text-xs font-medium text-gray-400">{label}</label>
       <input
+        type={type}
         autoComplete="off"
         placeholder={placeholder}
         value={value}
-        onChange={(e) => onChange(e.target.value)}
-        className="bg-gray-800 border border-gray-600 rounded-xl px-4 py-3
-                   text-white placeholder-gray-600 text-sm
-                   focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500"
+        onChange={e => onChange(e.target.value)}
+        className={inputCls}
       />
     </div>
   )
 }
+
+const inputCls = `bg-gray-800 border border-gray-600 rounded-xl px-4 py-3
+  text-white placeholder-gray-600 text-sm
+  focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500`
