@@ -14,7 +14,7 @@ export default function LocationsPage() {
 
       <div className="flex gap-2 border-b border-gray-700">
         {[
-          { key: TABS.ZONE,    label: '🏭 구역(Zone) 관리' },
+          { key: TABS.ZONE,    label: '🏭 구역(Zone)' },
           { key: TABS.PALLET,  label: '📦 파렛트랙 로케이션' },
           { key: TABS.PRODUCT, label: '🗂 상품 로케이션' },
         ].map(({ key, label }) => (
