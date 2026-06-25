@@ -117,7 +117,7 @@ export default function ZonePage() {
 
       {/* ── 헤더 */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-        <div className="flex items-center gap-3">
+        <div className="flex flex-col gap-1">
           <Link href="/" className="text-gray-500 hover:text-white text-sm transition-colors">
             ← 전체 조감도
           </Link>
