@@ -1,7 +1,14 @@
 import { createClient } from '@supabase/supabase-js'
 
-const supabaseUrl     = process.env.NEXT_PUBLIC_SUPABASE_URL     || 'https://placeholder.supabase.co'
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'placeholder-key'
+const rawUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || ''
+const rawKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
+
+// https:// 없이 입력된 경우 자동 보정
+const supabaseUrl = rawUrl.startsWith('http')
+  ? rawUrl
+  : 'https://placeholder.supabase.co'
+
+const supabaseAnonKey = rawKey || 'placeholder-key'
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   realtime: { params: { eventsPerSecond: 10 } },
