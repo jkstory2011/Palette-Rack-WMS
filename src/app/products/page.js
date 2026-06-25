@@ -21,6 +21,8 @@ export default function ProductsPage() {
   const [loadingModal, setLoadingModal]       = useState(false)
   const [showExcelModal, setShowExcelModal]   = useState(false)
   const [selectedIds, setSelectedIds]         = useState(new Set())
+  const [editingId, setEditingId]             = useState(null)
+  const [editForm, setEditForm]               = useState({})
   const allCheckRef = useRef(null)
 
   async function fetchProducts() {
@@ -102,6 +104,33 @@ export default function ProductsPage() {
   async function handleDelete(id) {
     if (!confirm('이 상품을 삭제하면 연결된 재고 데이터에 영향을 줄 수 있습니다. 계속할까요?')) return
     await supabase.from('products').delete().eq('id', id)
+    fetchProducts()
+  }
+
+  function startEdit(p) {
+    setEditingId(p.id)
+    setEditForm({
+      name:          p.name          ?? '',
+      unit:          p.unit          ?? 'BOX',
+      barcode:       p.barcode       ?? '',
+      client_name:   p.client_name   ?? '',
+      expiry_at:     p.expiry_at     ?? '',
+      mgmt_location: p.mgmt_location ?? '',
+      box_qty:       p.box_qty       ?? '',
+    })
+  }
+
+  async function handleEditSave(id) {
+    await supabase.from('products').update({
+      name:          editForm.name.trim()          || null,
+      unit:          editForm.unit.trim()          || 'EA',
+      barcode:       editForm.barcode.trim()       || null,
+      client_name:   editForm.client_name.trim()   || null,
+      expiry_at:     editForm.expiry_at            || null,
+      mgmt_location: editForm.mgmt_location.trim() || null,
+      box_qty:       editForm.box_qty ? Number(editForm.box_qty) : null,
+    }).eq('id', id)
+    setEditingId(null)
     fetchProducts()
   }
 
@@ -269,77 +298,154 @@ export default function ProductsPage() {
                     <th className="pb-2 font-medium pr-3 w-24">유통기한</th>
                     <th className="pb-2 font-medium text-right pr-3 w-20">전체재고</th>
                     <th className="pb-2 font-medium text-right pr-3 w-20">현적재</th>
-                    <th className="pb-2 w-10" />
+                    <th className="pb-2 w-28" />
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-800">
                   {filtered.map((p) => {
-                    const now      = new Date()
-                    const expiry   = p.expiry_at ? new Date(p.expiry_at) : null
-                    const daysLeft = expiry ? Math.ceil((expiry - now) / 86400000) : null
+                    const isEditing = editingId === p.id
+                    const now       = new Date()
+                    const expiry    = p.expiry_at ? new Date(p.expiry_at) : null
+                    const daysLeft  = expiry ? Math.ceil((expiry - now) / 86400000) : null
                     const isExpired      = daysLeft !== null && daysLeft <= 0
                     const isExpiringSoon = daysLeft !== null && daysLeft > 0 && daysLeft <= 30
 
+                    const eic = 'w-full bg-gray-700 border border-gray-600 rounded px-2 py-1 text-white text-xs focus:outline-none focus:ring-1 focus:ring-blue-500'
+
                     return (
-                      <tr key={p.id} onClick={() => openModal(p)}
-                        className={`hover:bg-gray-800/60 transition-colors cursor-pointer ${selectedIds.has(p.id) ? 'bg-blue-950/20' : ''}`}>
-                        <td className="py-3" onClick={e => e.stopPropagation()}>
+                      <tr key={p.id}
+                        onClick={() => { if (!isEditing) openModal(p) }}
+                        className={`hover:bg-gray-800/60 transition-colors ${isEditing ? 'bg-blue-950/30' : 'cursor-pointer'} ${selectedIds.has(p.id) ? 'bg-blue-950/20' : ''}`}>
+
+                        {/* 체크박스 */}
+                        <td className="py-2" onClick={e => e.stopPropagation()}>
                           <input type="checkbox" checked={selectedIds.has(p.id)} onChange={() => toggleSelect(p.id)}
                             className="w-4 h-4 accent-blue-500 cursor-pointer" />
                         </td>
-                        <td className="py-3 font-mono text-gray-300 pr-3 text-xs">{p.code}</td>
-                        <td className="py-3 pr-3">
-                          <span className="text-white font-medium">{p.name}</span>
-                          <span className="text-gray-600 text-xs ml-1.5">{p.unit}</span>
+
+                        {/* 상품코드 (수정 불가) */}
+                        <td className="py-2 font-mono text-gray-300 pr-3 text-xs">{p.code}</td>
+
+                        {/* 상품명 + 단위 */}
+                        <td className="py-2 pr-3" onClick={e => isEditing && e.stopPropagation()}>
+                          {isEditing ? (
+                            <div className="flex gap-1">
+                              <input className={eic} value={editForm.name}
+                                onChange={e => setEditForm(f => ({ ...f, name: e.target.value }))}
+                                placeholder="상품명" />
+                              <input className={`${eic} w-16`} value={editForm.unit}
+                                onChange={e => setEditForm(f => ({ ...f, unit: e.target.value }))}
+                                placeholder="단위" />
+                            </div>
+                          ) : (
+                            <>
+                              <span className="text-white font-medium">{p.name}</span>
+                              <span className="text-gray-600 text-xs ml-1.5">{p.unit}</span>
+                            </>
+                          )}
                         </td>
-                        <td className="py-3 pr-3 text-xs text-gray-400">
-                          {p.client_name
-                            ? <span className="bg-gray-700 text-gray-300 px-2 py-0.5 rounded-full">{p.client_name}</span>
-                            : <span className="text-gray-700">—</span>}
+
+                        {/* 화주사명 */}
+                        <td className="py-2 pr-3 text-xs" onClick={e => isEditing && e.stopPropagation()}>
+                          {isEditing ? (
+                            <input className={eic} value={editForm.client_name}
+                              onChange={e => setEditForm(f => ({ ...f, client_name: e.target.value }))}
+                              placeholder="화주사명" />
+                          ) : p.client_name ? (
+                            <span className="bg-gray-700 text-gray-300 px-2 py-0.5 rounded-full">{p.client_name}</span>
+                          ) : <span className="text-gray-700">—</span>}
                         </td>
+
                         {/* 관리 로케이션 */}
-                        <td className="py-3 pr-3 text-xs">
-                          {p.mgmt_location
-                            ? <span className="text-blue-300 font-mono bg-blue-600/10 border border-blue-600/20 px-2 py-0.5 rounded">
-                                {p.mgmt_location}
-                              </span>
-                            : <span className="text-gray-700">—</span>}
+                        <td className="py-2 pr-3 text-xs" onClick={e => isEditing && e.stopPropagation()}>
+                          {isEditing ? (
+                            <input className={eic} value={editForm.mgmt_location}
+                              onChange={e => setEditForm(f => ({ ...f, mgmt_location: e.target.value }))}
+                              placeholder="A-01 등" />
+                          ) : p.mgmt_location ? (
+                            <span className="text-blue-300 font-mono bg-blue-600/10 border border-blue-600/20 px-2 py-0.5 rounded">
+                              {p.mgmt_location}
+                            </span>
+                          ) : <span className="text-gray-700">—</span>}
                         </td>
+
                         {/* BOX 내품수량 */}
-                        <td className="py-3 pr-3 text-center text-xs">
-                          {p.box_qty
-                            ? <span className="text-yellow-400 font-bold">{p.box_qty.toLocaleString()}</span>
-                            : <span className="text-gray-700">—</span>}
+                        <td className="py-2 pr-3 text-center text-xs" onClick={e => isEditing && e.stopPropagation()}>
+                          {isEditing ? (
+                            <input className={eic} type="number" value={editForm.box_qty}
+                              onChange={e => setEditForm(f => ({ ...f, box_qty: e.target.value }))}
+                              placeholder="24" />
+                          ) : p.box_qty ? (
+                            <span className="text-yellow-400 font-bold">{p.box_qty.toLocaleString()}</span>
+                          ) : <span className="text-gray-700">—</span>}
                         </td>
-                        <td className="py-3 font-mono text-gray-400 pr-3 text-xs">
-                          {p.barcode ?? <span className="text-gray-700">—</span>}
+
+                        {/* 바코드 */}
+                        <td className="py-2 font-mono text-gray-400 pr-3 text-xs" onClick={e => isEditing && e.stopPropagation()}>
+                          {isEditing ? (
+                            <input className={eic} value={editForm.barcode}
+                              onChange={e => setEditForm(f => ({ ...f, barcode: e.target.value }))}
+                              placeholder="바코드" />
+                          ) : (p.barcode ?? <span className="text-gray-700">—</span>)}
                         </td>
-                        <td className="py-3 text-gray-400 text-xs pr-3">
+
+                        {/* 입고일 (표시 전용) */}
+                        <td className="py-2 text-gray-400 text-xs pr-3">
                           {p.lastInbound
                             ? new Date(p.lastInbound).toLocaleDateString('ko-KR')
                             : <span className="text-gray-700">—</span>}
                         </td>
-                        <td className="py-3 text-xs pr-3">
-                          {expiry ? (
+
+                        {/* 유통기한 */}
+                        <td className="py-2 text-xs pr-3" onClick={e => isEditing && e.stopPropagation()}>
+                          {isEditing ? (
+                            <input type="date" className={eic} value={editForm.expiry_at}
+                              onChange={e => setEditForm(f => ({ ...f, expiry_at: e.target.value }))} />
+                          ) : expiry ? (
                             <span className={isExpired ? 'text-red-500 font-bold' : isExpiringSoon ? 'text-yellow-400 font-semibold' : 'text-gray-400'}>
                               {expiry.toLocaleDateString('ko-KR')}
                               {isExpired && ' ⚠'}{isExpiringSoon && ` D-${daysLeft}`}
                             </span>
                           ) : <span className="text-gray-700">—</span>}
                         </td>
-                        <td className="py-3 text-right font-mono text-gray-300 pr-3">
+
+                        {/* 전체재고 */}
+                        <td className="py-2 text-right font-mono text-gray-300 pr-3">
                           {p.totalQty > 0 ? p.totalQty.toLocaleString() : <span className="text-gray-700">0</span>}
                         </td>
-                        <td className="py-3 text-right font-mono pr-3">
+
+                        {/* 현적재 */}
+                        <td className="py-2 text-right font-mono pr-3">
                           <span className={p.storedQty > 0 ? 'text-green-400 font-semibold' : 'text-gray-600'}>
                             {p.storedQty.toLocaleString()}
                           </span>
                         </td>
-                        <td className="py-3 text-right">
-                          <button onClick={e => { e.stopPropagation(); handleDelete(p.id) }}
-                            className="text-xs text-gray-600 hover:text-red-400 transition-colors px-2 py-1">
-                            삭제
-                          </button>
+
+                        {/* 액션 */}
+                        <td className="py-2 text-right" onClick={e => e.stopPropagation()}>
+                          {isEditing ? (
+                            <div className="flex gap-1 justify-end">
+                              <button onClick={() => handleEditSave(p.id)}
+                                className="text-xs px-2 py-1 rounded bg-blue-600 hover:bg-blue-500 text-white font-semibold transition-colors">
+                                저장
+                              </button>
+                              <button onClick={() => setEditingId(null)}
+                                className="text-xs px-2 py-1 rounded bg-gray-700 hover:bg-gray-600 text-gray-300 transition-colors">
+                                취소
+                              </button>
+                            </div>
+                          ) : (
+                            <div className="flex gap-1 justify-end">
+                              <button onClick={() => startEdit(p)}
+                                className="text-xs text-gray-500 hover:text-blue-400 transition-colors px-2 py-1">
+                                수정
+                              </button>
+                              <button onClick={() => handleDelete(p.id)}
+                                className="text-xs text-gray-600 hover:text-red-400 transition-colors px-2 py-1">
+                                삭제
+                              </button>
+                            </div>
+                          )}
                         </td>
                       </tr>
                     )
