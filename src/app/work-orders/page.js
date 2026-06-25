@@ -78,6 +78,7 @@ function OrdersTab() {
   const [typeFilter, setTypeFilter] = useState('all')
   const [statusFilter, setStatusFilter] = useState('active')  // active | all
   const [actionTarget, setActionTarget] = useState(null)      // { order, action }
+  const [printTarget, setPrintTarget]   = useState(null)      // order
 
   const fetchOrders = useCallback(async () => {
     setLoading(true)
@@ -273,21 +274,24 @@ function OrdersTab() {
                     </p>
                   </div>
 
-                  {/* 액션 버튼 */}
-                  {actions.length > 0 && (
-                    <div className="flex flex-col gap-1.5 shrink-0">
-                      {actions.map(action => {
-                        const meta = ACTION_META[action]
-                        return (
-                          <button key={action}
-                            onClick={() => setActionTarget({ order, action })}
-                            className={`px-3 py-1.5 rounded-lg text-white text-xs font-bold transition-colors ${meta.btnCls}`}>
-                            {meta.emoji} {meta.label}
-                          </button>
-                        )
-                      })}
-                    </div>
-                  )}
+                  {/* 액션 버튼 + 출력 */}
+                  <div className="flex flex-col gap-1.5 shrink-0">
+                    {actions.map(action => {
+                      const meta = ACTION_META[action]
+                      return (
+                        <button key={action}
+                          onClick={() => setActionTarget({ order, action })}
+                          className={`px-3 py-1.5 rounded-lg text-white text-xs font-bold transition-colors ${meta.btnCls}`}>
+                          {meta.emoji} {meta.label}
+                        </button>
+                      )
+                    })}
+                    {actions.length > 0 && <div className="h-px bg-gray-700 my-0.5" />}
+                    <button onClick={() => setPrintTarget(order)}
+                      className="px-3 py-1.5 rounded-lg text-white text-xs font-bold transition-colors bg-gray-700 hover:bg-gray-500">
+                      🖨️ 출력
+                    </button>
+                  </div>
                 </div>
               </div>
             )
@@ -303,6 +307,10 @@ function OrdersTab() {
           onClose={() => setActionTarget(null)}
           onConfirm={(reason) => applyAction(actionTarget.order, actionTarget.action, reason)}
         />
+      )}
+
+      {printTarget && (
+        <OrderPrintModal order={printTarget} onClose={() => setPrintTarget(null)} />
       )}
     </div>
   )
@@ -818,6 +826,182 @@ function InfoCell({ label, value, large }) {
     <div>
       <p className="text-[10px] text-gray-400 tracking-widest uppercase mb-1">{label}</p>
       <p className={`font-bold text-gray-900 ${large ? 'text-xl' : 'text-sm'}`}>{value}</p>
+    </div>
+  )
+}
+
+// ══════════════════════════════════════════════════
+// 오더 작업지시서 출력 모달
+// ══════════════════════════════════════════════════
+function OrderPrintModal({ order, onClose }) {
+  const barcodeRef = useRef(null)
+  const typeLabel  = order.type === 'inbound' ? '입고' : '출고'
+  const typeEmoji  = order.type === 'inbound' ? '📥' : '🚛'
+  const st         = STATUS_META[order.status] ?? STATUS_META.registered
+  const now        = new Date()
+  const totalQty   = order.items.reduce((s, it) => s + (it.qty ?? 0), 0)
+
+  useEffect(() => {
+    const handler = e => { if (e.key === 'Escape') onClose() }
+    window.addEventListener('keydown', handler)
+    return () => window.removeEventListener('keydown', handler)
+  }, [onClose])
+
+  useEffect(() => {
+    if (!barcodeRef.current) return
+    try {
+      JsBarcode(barcodeRef.current, order.order_no, {
+        format: 'CODE128', width: 2, height: 60,
+        displayValue: true, fontSize: 13, margin: 8,
+        background: '#ffffff', lineColor: '#000000',
+      })
+    } catch {}
+  }, [order.order_no])
+
+  function handlePrint() {
+    document.body.classList.add('printing-label')
+    window.print()
+    document.body.classList.remove('printing-label')
+  }
+
+  return (
+    <div className="no-print fixed inset-0 z-50 flex items-center justify-center p-4"
+      style={{ backgroundColor: 'rgba(0,0,0,0.82)' }} onClick={onClose}>
+      <div className="w-full max-w-lg shadow-2xl rounded-2xl overflow-hidden flex flex-col max-h-[90vh]"
+        onClick={e => e.stopPropagation()}>
+
+        {/* 모달 헤더 */}
+        <div className="no-print bg-gray-900 border-b border-gray-700 px-5 py-4 flex items-center justify-between shrink-0">
+          <div className="flex items-center gap-2">
+            <span className="text-lg">{typeEmoji}</span>
+            <span className="text-white font-bold">{typeLabel} 작업지시서 출력</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <button onClick={handlePrint}
+              className="flex items-center gap-2 px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-sm font-bold transition-colors">
+              🖨️ 출력
+            </button>
+            <button onClick={onClose} className="text-gray-400 hover:text-white text-2xl leading-none ml-2">✕</button>
+          </div>
+        </div>
+
+        {/* 인쇄 영역 */}
+        <div className="label-print-area overflow-y-auto bg-white text-black flex-1">
+
+          {/* 상단 헤더 */}
+          <div className="px-6 pt-6 pb-4 border-b-2 border-black">
+            <div className="flex items-start justify-between">
+              <div>
+                <p className="text-[10px] text-gray-500 tracking-widest uppercase">Palette Rack WMS</p>
+                <h1 className="text-2xl font-black tracking-tight mt-0.5">{typeEmoji} {typeLabel} 작업지시서</h1>
+              </div>
+              <div className="text-right text-xs text-gray-500 space-y-0.5">
+                <p className="font-bold text-gray-800 text-sm">
+                  {now.toLocaleDateString('ko-KR', { year: 'numeric', month: '2-digit', day: '2-digit' })}
+                </p>
+                <p>{now.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })} 발행</p>
+                <p className="mt-1 inline-block text-[10px] px-2 py-0.5 rounded-full border border-gray-300 bg-gray-100">
+                  {st.label}
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* 바코드 */}
+          <div className="px-6 py-4 border-b border-gray-200 flex flex-col items-center">
+            <p className="text-[10px] text-gray-400 tracking-widest uppercase mb-2">Order No.</p>
+            <svg ref={barcodeRef} className="max-w-full" />
+          </div>
+
+          {/* 기본 정보 */}
+          <div className="px-6 py-4 grid grid-cols-3 gap-4 border-b border-gray-200">
+            <div>
+              <p className="text-[10px] text-gray-400 tracking-widest uppercase mb-1">화주사</p>
+              <p className="font-bold text-gray-900 text-sm">{order.client_name || '—'}</p>
+            </div>
+            <div>
+              <p className="text-[10px] text-gray-400 tracking-widest uppercase mb-1">예정일</p>
+              <p className="font-bold text-gray-900 text-sm">{order.scheduled_date || '—'}</p>
+            </div>
+            {order.type === 'inbound' && (
+              <div>
+                <p className="text-[10px] text-gray-400 tracking-widest uppercase mb-1">파렛트 수</p>
+                <p className="font-bold text-gray-900 text-sm">{order.pallet_count ? `${order.pallet_count}개` : '—'}</p>
+              </div>
+            )}
+          </div>
+
+          {/* 상품 내역 */}
+          <div className="px-6 py-4">
+            <p className="text-[10px] text-gray-400 tracking-widest uppercase mb-3">상품 내역</p>
+            <table className="w-full text-sm border border-gray-200 rounded-lg overflow-hidden">
+              <thead>
+                <tr className="bg-gray-100 text-xs text-gray-600">
+                  <th className="px-3 py-2 text-left font-semibold">상품명</th>
+                  <th className="px-3 py-2 text-right font-semibold">수량</th>
+                  <th className="px-3 py-2 text-right font-semibold">단위</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-100">
+                {order.items.length === 0 ? (
+                  <tr><td colSpan={3} className="px-3 py-3 text-center text-gray-400 text-xs">상품 정보 없음</td></tr>
+                ) : order.items.map((it, i) => (
+                  <tr key={i} className={i % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
+                    <td className="px-3 py-2.5 font-medium text-gray-900">{it.name}</td>
+                    <td className="px-3 py-2.5 text-right font-bold text-gray-900">{(it.qty ?? 0).toLocaleString()}</td>
+                    <td className="px-3 py-2.5 text-right text-gray-500">{it.unit}</td>
+                  </tr>
+                ))}
+              </tbody>
+              {order.items.length > 1 && (
+                <tfoot>
+                  <tr className="bg-gray-100 font-bold text-sm border-t border-gray-200">
+                    <td className="px-3 py-2 text-right text-gray-600">합계</td>
+                    <td className="px-3 py-2 text-right text-gray-900">{totalQty.toLocaleString()}</td>
+                    <td />
+                  </tr>
+                </tfoot>
+              )}
+            </table>
+          </div>
+
+          {/* 비고 */}
+          {order.note && (
+            <div className="px-6 pb-4">
+              <p className="text-[10px] text-gray-400 tracking-widest uppercase mb-1">비고</p>
+              <p className="text-sm text-gray-700 border border-gray-200 rounded-lg px-3 py-2">{order.note}</p>
+            </div>
+          )}
+
+          {/* 서명란 */}
+          <div className="px-6 pb-6 pt-2">
+            <div className="grid grid-cols-3 gap-3 mt-2">
+              {['담당자', '확인자', '입회자'].map(role => (
+                <div key={role} className="border border-gray-300 rounded-lg overflow-hidden">
+                  <div className="bg-gray-100 px-3 py-1.5 text-[10px] font-semibold text-gray-500 text-center">{role}</div>
+                  <div className="h-14" />
+                  <div className="border-t border-gray-200 px-3 py-1 text-[10px] text-gray-400 text-center">(서명)</div>
+                </div>
+              ))}
+            </div>
+            <p className="text-[10px] text-gray-400 text-center mt-4">
+              등록: {new Date(order.created_at).toLocaleString('ko-KR')} · Palette Rack WMS
+            </p>
+          </div>
+        </div>
+
+        {/* 모달 하단 */}
+        <div className="no-print bg-gray-900 border-t border-gray-700 px-5 py-3 flex justify-end gap-2 shrink-0">
+          <button onClick={handlePrint}
+            className="px-6 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-sm transition-colors">
+            🖨️ 인쇄
+          </button>
+          <button onClick={onClose}
+            className="px-6 py-2.5 rounded-xl bg-gray-700 hover:bg-gray-600 text-white text-sm font-semibold transition-colors">
+            닫기
+          </button>
+        </div>
+      </div>
     </div>
   )
 }
