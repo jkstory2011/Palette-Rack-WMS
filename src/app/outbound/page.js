@@ -1,448 +1,570 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import { supabase } from '@/lib/supabase'
 import { getFifoLocations, pickFifoItems } from '@/lib/utils/fifo'
+import { generateOrderNo } from '@/lib/utils/pallet'
 
 const SIDE_KO = { L: '좌(L)', R: '우(R)' }
 
 export default function OutboundPage() {
-  const [products, setProducts]   = useState([])
-  const [entries, setEntries]     = useState([])   // 추가된 상품별 출고 항목
-  const [addProductId, setAddProductId] = useState('')
-  const [confirming, setConfirming] = useState(false)
-  const [error, setError]         = useState('')
-  const [success, setSuccess]     = useState('')
+  const [tab, setTab] = useState('register')
+
+  const TABS = [
+    { key: 'register', label: '① 출고등록' },
+    { key: 'instruct', label: '② 출고지시' },
+    { key: 'complete', label: '③ 출고완료' },
+  ]
+
+  return (
+    <div className="max-w-4xl mx-auto space-y-5">
+      <h1 className="text-2xl font-bold text-white">출고 관리</h1>
+
+      <div className="flex gap-2 border-b border-gray-700">
+        {TABS.map(({ key, label }) => (
+          <button key={key} onClick={() => setTab(key)}
+            className={`px-5 py-3 text-sm font-semibold rounded-t-xl transition-colors ${
+              tab === key
+                ? 'bg-gray-800 text-white border-t border-l border-r border-gray-700'
+                : 'text-gray-500 hover:text-gray-300'
+            }`}>
+            {label}
+          </button>
+        ))}
+      </div>
+
+      {tab === 'register' && <RegisterTab onDone={() => setTab('instruct')} />}
+      {tab === 'instruct' && <InstructTab onDone={() => setTab('complete')} />}
+      {tab === 'complete' && <CompleteTab onDone={() => setTab('register')} />}
+    </div>
+  )
+}
+
+// ══════════════════════════════════════════════════
+// ① 출고등록
+// ══════════════════════════════════════════════════
+function RegisterTab({ onDone }) {
+  const [products, setProducts] = useState([])
+  const [form, setForm] = useState({
+    clientName: '', scheduledDate: '', note: '',
+    items: [{ productId: '', requiredQty: '' }],
+  })
+  const [saving, setSaving]   = useState(false)
+  const [error, setError]     = useState('')
+  const [success, setSuccess] = useState('')
 
   useEffect(() => {
     supabase.from('products').select('id, code, name, unit').order('name')
       .then(({ data }) => setProducts(data ?? []))
   }, [])
 
-  const addedProductIds = entries.map((e) => String(e.productId))
-
-  // ── 상품 추가
-  async function handleAddProduct() {
-    if (!addProductId || addedProductIds.includes(String(addProductId))) return
-    const product = products.find((p) => String(p.id) === String(addProductId))
-    const entryId = Date.now()
-
-    setEntries((prev) => [...prev, {
-      id: entryId, productId: addProductId, product,
-      fifoList: [], rowPicks: {}, liveQty: '', loading: true,
-    }])
-    setAddProductId('')
-
-    try {
-      const fifoList = await getFifoLocations(supabase, Number(addProductId))
-      const rowPicks = {}
-      fifoList.forEach((item) => { rowPicks[item.palletId] = { checked: false, shipQty: item.qty } })
-      setEntries((prev) => prev.map((e) =>
-        e.id === entryId ? { ...e, fifoList, rowPicks, loading: false } : e
-      ))
-    } catch (err) {
-      setEntries((prev) => prev.filter((e) => e.id !== entryId))
-      setError(err.message)
-    }
+  function updateItem(i, field, val) {
+    setForm(f => {
+      const items = [...f.items]
+      items[i] = { ...items[i], [field]: val }
+      return { ...f, items }
+    })
   }
 
-  // ── 상품 제거
-  function removeEntry(entryId) {
-    setEntries((prev) => prev.filter((e) => e.id !== entryId))
-  }
-
-  // ── 수량 입력 → FIFO 자동 선택
-  function updateLiveQty(entryId, qty) {
-    setEntries((prev) => prev.map((e) => {
-      if (e.id !== entryId) return e
-      const qtyNum = Number(qty)
-      if (!qty || qtyNum <= 0) {
-        const rowPicks = {}
-        e.fifoList.forEach((item) => {
-          rowPicks[item.palletId] = { checked: false, shipQty: e.rowPicks[item.palletId]?.shipQty ?? item.qty }
-        })
-        return { ...e, liveQty: qty, rowPicks }
-      }
-      const result = pickFifoItems(e.fifoList, qtyNum)
-      const rowPicks = {}
-      e.fifoList.forEach((item) => {
-        const p = result.items.find((r) => r.palletId === item.palletId)
-        rowPicks[item.palletId] = { checked: !!p, shipQty: p?.shipQty ?? item.qty }
-      })
-      return { ...e, liveQty: qty, rowPicks }
-    }))
-  }
-
-  // ── 행 체크박스 토글
-  function toggleRow(entryId, palletId) {
-    setEntries((prev) => prev.map((e) => {
-      if (e.id !== entryId) return e
-      return {
-        ...e, liveQty: '',
-        rowPicks: { ...e.rowPicks, [palletId]: { ...e.rowPicks[palletId], checked: !e.rowPicks[palletId]?.checked } },
-      }
-    }))
-  }
-
-  // ── 행 수량 직접 수정
-  function updateRowQty(entryId, palletId, val, maxQty) {
-    const shipQty = Math.min(Math.max(1, Number(val) || 1), maxQty)
-    setEntries((prev) => prev.map((e) => {
-      if (e.id !== entryId) return e
-      return { ...e, liveQty: '', rowPicks: { ...e.rowPicks, [palletId]: { checked: true, shipQty } } }
-    }))
-  }
-
-  // ── 전체 체크/해제
-  function toggleAllRows(entryId, checked) {
-    setEntries((prev) => prev.map((e) => {
-      if (e.id !== entryId) return e
-      const rowPicks = {}
-      e.fifoList.forEach((item) => { rowPicks[item.palletId] = { ...e.rowPicks[item.palletId], checked } })
-      return { ...e, liveQty: '', rowPicks }
-    }))
-  }
-
-  // ── 항목별 선택 계산
-  function getSelectedItems(entry) {
-    return entry.fifoList
-      .filter((item) => entry.rowPicks[item.palletId]?.checked)
-      .map((item) => {
-        const shipQty = entry.rowPicks[item.palletId]?.shipQty ?? item.qty
-        return { ...item, shipQty, isPartial: shipQty < item.qty }
-      })
-  }
-
-  const entriesWithSelection = entries.map((e) => ({ ...e, selectedItems: getSelectedItems(e) }))
-  const hasAnySelection = entriesWithSelection.some((e) => e.selectedItems.length > 0)
-
-  // ── 출고 확정
-  async function handleConfirm() {
-    if (!hasAnySelection) return
-    setConfirming(true)
+  async function handleSubmit(e) {
+    e.preventDefault()
     setError('')
+    if (form.items.some(it => !it.productId || !it.requiredQty || Number(it.requiredQty) <= 0))
+      return setError('상품과 출고 수량을 입력하세요.')
+    if (new Set(form.items.map(it => it.productId)).size < form.items.length)
+      return setError('같은 상품이 중복되어 있습니다.')
+
+    setSaving(true)
     try {
-      for (const entry of entriesWithSelection) {
-        for (const item of entry.selectedItems) {
-          const { shipQty } = item
-          if (shipQty < item.qty) {
-            const { error: uErr } = await supabase
-              .from('pallet_items')
-              .update({ qty: item.qty - shipQty })
-              .eq('pallet_id', item.palletId)
-              .eq('product_id', Number(entry.productId))
-            if (uErr) throw uErr
-          } else {
-            const { error: dErr } = await supabase
-              .from('pallet_items')
-              .delete()
-              .eq('pallet_id', item.palletId)
-              .eq('product_id', Number(entry.productId))
-            if (dErr) throw dErr
+      const { data: existing } = await supabase.from('outbound_orders').select('order_no')
+      const orderNo = generateOrderNo((existing ?? []).map(r => r.order_no), 'OUT')
 
-            const { data: remaining } = await supabase
-              .from('pallet_items').select('id').eq('pallet_id', item.palletId)
-            if (!remaining || remaining.length === 0) {
-              const { error: pErr } = await supabase
-                .from('pallets')
-                .update({ status: 'shipped', outbound_at: new Date().toISOString() })
-                .eq('id', item.palletId)
-              if (pErr) throw pErr
-            }
-          }
-          await supabase.from('outbound_logs').insert({
-            pallet_id:   item.palletId,
-            location_id: item.locationId,
-            tier:        item.tier,
-            side:        item.side,
-          })
-        }
-      }
+      const { data: order, error: oErr } = await supabase
+        .from('outbound_orders')
+        .insert({
+          order_no:       orderNo,
+          client_name:    form.clientName || null,
+          scheduled_date: form.scheduledDate || null,
+          note:           form.note || null,
+        })
+        .select('id').single()
+      if (oErr) throw oErr
 
-      const summary = entriesWithSelection
-        .filter((e) => e.selectedItems.length > 0)
-        .map((e) => `${e.product?.name} ${e.selectedItems.reduce((s, i) => s + i.shipQty, 0).toLocaleString()}${e.product?.unit}`)
-        .join(' / ')
+      const itemRows = form.items.map(it => ({
+        order_id:     order.id,
+        product_id:   Number(it.productId),
+        required_qty: Number(it.requiredQty),
+      }))
+      const { error: iErr } = await supabase.from('outbound_order_items').insert(itemRows)
+      if (iErr) throw iErr
 
-      setSuccess(`✅ 출고 완료 — ${summary}`)
-      setEntries([])
+      setSuccess(`✅ 출고오더 ${orderNo} 등록 완료 — 출고지시 탭에서 피킹 목록을 생성하세요.`)
+      setForm({ clientName: '', scheduledDate: '', note: '', items: [{ productId: '', requiredQty: '' }] })
     } catch (err) {
       setError(err.message)
-    } finally {
-      setConfirming(false)
     }
+    setSaving(false)
   }
 
   return (
-    <div className="max-w-3xl mx-auto space-y-6">
-      <h1 className="text-2xl font-bold text-white">출고 지시 — FIFO</h1>
-
-      {/* ── 상품 추가 */}
-      <div className="wms-card space-y-3">
-        <h2 className="text-base font-semibold text-gray-300">출고 상품 추가</h2>
-        <div className="flex gap-3">
-          <select
-            value={addProductId}
-            onChange={(e) => setAddProductId(e.target.value)}
-            className="flex-1 min-w-0 bg-gray-800 border border-gray-600 rounded-xl px-4 py-3
-                       text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/50"
-          >
-            <option value="">상품 선택...</option>
-            {products
-              .filter((p) => !addedProductIds.includes(String(p.id)))
-              .map((p) => (
-                <option key={p.id} value={p.id}>{p.name} ({p.code})</option>
-              ))}
-          </select>
-          <button
-            type="button"
-            onClick={handleAddProduct}
-            disabled={!addProductId}
-            className="shrink-0 px-6 py-3 rounded-xl bg-blue-600 hover:bg-blue-500
-                       text-white font-bold transition-colors disabled:opacity-40"
-          >
-            + 추가
-          </button>
+    <form onSubmit={handleSubmit} className="space-y-4">
+      <div className="wms-card space-y-4">
+        <h2 className="text-base font-semibold text-gray-300">기본 정보</h2>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <Field label="화주사명">
+            <input value={form.clientName} onChange={e => setForm(f => ({ ...f, clientName: e.target.value }))}
+              placeholder="(주)OO물류" className={inputCls} />
+          </Field>
+          <Field label="예정 출고일">
+            <input type="date" value={form.scheduledDate}
+              onChange={e => setForm(f => ({ ...f, scheduledDate: e.target.value }))} className={inputCls} />
+          </Field>
+          <Field label="메모">
+            <input value={form.note} onChange={e => setForm(f => ({ ...f, note: e.target.value }))}
+              placeholder="비고" className={inputCls} />
+          </Field>
         </div>
-        {entries.length > 0 && (
-          <p className="text-xs text-gray-600">
-            {entries.length}개 상품 추가됨 — 다른 상품을 계속 추가할 수 있습니다.
-          </p>
-        )}
       </div>
 
-      {/* ── 피드백 */}
+      <div className="wms-card space-y-4">
+        <h2 className="text-base font-semibold text-gray-300">출고 상품</h2>
+        <div className="space-y-2">
+          {form.items.map((item, i) => (
+            <div key={i} className="flex gap-2 items-center">
+              <select value={item.productId} onChange={e => updateItem(i, 'productId', e.target.value)}
+                className="flex-1 min-w-0 bg-gray-800 border border-gray-600 rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/50">
+                <option value="">상품 선택...</option>
+                {products.map(p => <option key={p.id} value={p.id}>{p.name} ({p.code})</option>)}
+              </select>
+              <div className="flex items-center gap-1 shrink-0">
+                <input type="number" min="1" placeholder="수량"
+                  value={item.requiredQty} onChange={e => updateItem(i, 'requiredQty', e.target.value)}
+                  className="w-24 bg-gray-800 border border-gray-600 rounded-xl px-3 py-3 text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/50" />
+                <span className="text-gray-500 text-sm w-10">
+                  {products.find(p => String(p.id) === String(item.productId))?.unit ?? ''}
+                </span>
+              </div>
+              {form.items.length > 1 && (
+                <button type="button" onClick={() => setForm(f => ({ ...f, items: f.items.filter((_, idx) => idx !== i) }))}
+                  className="text-gray-600 hover:text-red-400 text-lg transition-colors shrink-0">✕</button>
+              )}
+            </div>
+          ))}
+        </div>
+        <button type="button"
+          onClick={() => setForm(f => ({ ...f, items: [...f.items, { productId: '', requiredQty: '' }] }))}
+          className="text-sm text-blue-400 hover:text-blue-300 transition-colors">
+          + 상품 추가
+        </button>
+      </div>
+
       {error   && <p className="text-sm text-red-400 bg-red-900/20 border border-red-700 rounded-xl px-4 py-3">{error}</p>}
       {success && <p className="text-sm text-green-400 bg-green-900/20 border border-green-700 rounded-xl px-4 py-3">{success}</p>}
 
-      {/* ── 상품별 FIFO 카드 */}
-      {entries.map((entry) => {
-        const totalStock    = entry.fifoList.reduce((s, i) => s + i.qty, 0)
-        const selectedItems = getSelectedItems(entry)
-        const totalSelected = selectedItems.reduce((s, i) => s + i.shipQty, 0)
-        const allChecked    = entry.fifoList.length > 0 && entry.fifoList.every((i) => entry.rowPicks[i.palletId]?.checked)
+      <button type="submit" disabled={saving}
+        className="w-full py-4 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-lg font-bold transition-colors disabled:opacity-40">
+        {saving ? '등록 중...' : '📋 출고 등록'}
+      </button>
+    </form>
+  )
+}
 
-        return (
-          <div key={entry.id} className="wms-card space-y-4">
-            {/* 상품 헤더 */}
-            <div className="flex items-start justify-between gap-3">
-              <div>
-                <div className="flex items-center gap-2 flex-wrap">
-                  <span className="text-xs font-mono text-gray-500">{entry.product?.code}</span>
-                  {totalSelected > 0 && (
-                    <span className="text-xs font-semibold px-2 py-0.5 rounded-full
-                                     bg-blue-900/40 text-blue-300 border border-blue-700">
-                      선택: {totalSelected.toLocaleString()} {entry.product?.unit}
-                    </span>
-                  )}
-                </div>
-                <h3 className="text-base font-bold text-white mt-0.5">{entry.product?.name}</h3>
-                {!entry.loading && (
-                  <p className="text-xs text-gray-500 mt-0.5">
-                    총 재고: {entry.fifoList.length}파렛트 / {totalStock.toLocaleString()} {entry.product?.unit}
-                  </p>
-                )}
+// ══════════════════════════════════════════════════
+// ② 출고지시
+// ══════════════════════════════════════════════════
+function InstructTab({ onDone }) {
+  const [orders, setOrders]   = useState([])
+  const [loading, setLoading] = useState(true)
+  const [instructing, setInstructing] = useState(null)
+
+  const fetchOrders = useCallback(async () => {
+    setLoading(true)
+    const { data } = await supabase
+      .from('outbound_orders')
+      .select(`id, order_no, status, client_name, scheduled_date, note, created_at,
+               outbound_order_items ( required_qty, products ( name, unit ) )`)
+      .eq('status', 'registered')
+      .order('created_at', { ascending: false })
+    setOrders(data ?? [])
+    setLoading(false)
+  }, [])
+
+  useEffect(() => { fetchOrders() }, [fetchOrders])
+
+  if (loading) return <p className="text-center text-gray-500 py-12 animate-pulse">불러오는 중...</p>
+  if (orders.length === 0)
+    return <p className="text-center text-gray-600 py-12">대기 중인 출고오더가 없습니다.</p>
+
+  return (
+    <div className="space-y-3">
+      {orders.map(order => (
+        <div key={order.id} className="wms-card space-y-3">
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="font-mono text-blue-400 font-bold text-sm">{order.order_no}</span>
+                {order.client_name && <span className="text-xs bg-gray-700 text-gray-300 px-2 py-0.5 rounded-full">{order.client_name}</span>}
               </div>
-              <button
-                onClick={() => removeEntry(entry.id)}
-                className="text-xs text-gray-600 hover:text-red-400 transition-colors shrink-0 px-2 py-1"
-              >
-                ✕ 제거
-              </button>
+              <div className="flex flex-wrap gap-1 mt-1">
+                {(order.outbound_order_items ?? []).map((it, i) => (
+                  <span key={i} className="text-xs text-gray-400 bg-gray-800 px-2 py-0.5 rounded">
+                    {it.products?.name} {it.required_qty}{it.products?.unit}
+                  </span>
+                ))}
+              </div>
+              {order.scheduled_date && <p className="text-xs text-gray-500 mt-1">예정일: {order.scheduled_date}</p>}
             </div>
-
-            {entry.loading ? (
-              <p className="text-center text-gray-500 py-4 animate-pulse text-sm">재고 조회 중...</p>
-            ) : entry.fifoList.length === 0 ? (
-              <p className="text-center text-gray-600 py-4 text-sm">해당 상품의 재고가 없습니다.</p>
-            ) : (
-              <>
-                {/* 수량 자동 선택 */}
-                <div className="flex items-center gap-3 bg-gray-800/60 border border-gray-700 rounded-xl px-4 py-3">
-                  <span className="text-xs text-gray-400 shrink-0">출고수량</span>
-                  <input
-                    type="number"
-                    min="1"
-                    max={totalStock}
-                    placeholder={`최대 ${totalStock.toLocaleString()}`}
-                    value={entry.liveQty}
-                    onChange={(e) => updateLiveQty(entry.id, e.target.value)}
-                    className="flex-1 bg-gray-700 border border-gray-600 rounded-lg px-3 py-1.5
-                               text-white text-sm placeholder-gray-500 focus:outline-none
-                               focus:ring-1 focus:ring-blue-500"
-                  />
-                  <span className="text-xs text-gray-500 shrink-0">{entry.product?.unit}</span>
-                  {entry.liveQty && (
-                    <button
-                      onClick={() => updateLiveQty(entry.id, '')}
-                      className="text-xs text-gray-600 hover:text-white transition-colors shrink-0"
-                    >
-                      초기화
-                    </button>
-                  )}
-                </div>
-
-                {/* FIFO 테이블 */}
-                <div className="overflow-x-auto">
-                  <table className="w-full text-sm">
-                    <thead>
-                      <tr className="text-xs text-gray-500 border-b border-gray-700 text-left">
-                        <th className="pb-2 w-8">
-                          <input
-                            type="checkbox"
-                            checked={allChecked}
-                            onChange={(e) => toggleAllRows(entry.id, e.target.checked)}
-                            className="w-4 h-4 accent-blue-500 cursor-pointer"
-                          />
-                        </th>
-                        <th className="pb-2 font-medium w-8">순위</th>
-                        <th className="pb-2 font-medium">로케이션</th>
-                        <th className="pb-2 font-medium text-center">슬롯</th>
-                        <th className="pb-2 font-medium text-right">보유수량</th>
-                        <th className="pb-2 font-medium text-right text-blue-400">출고수량</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-gray-800">
-                      {entry.fifoList.map((item) => {
-                        const pick      = entry.rowPicks[item.palletId]
-                        const checked   = pick?.checked ?? false
-                        const shipQty   = pick?.shipQty ?? item.qty
-                        const isPartial = shipQty < item.qty
-
-                        return (
-                          <tr
-                            key={item.palletId}
-                            onClick={() => toggleRow(entry.id, item.palletId)}
-                            className={`transition-colors cursor-pointer ${
-                              checked
-                                ? 'bg-blue-900/20 border-l-2 border-blue-500'
-                                : 'hover:bg-gray-800/40 opacity-50'
-                            }`}
-                          >
-                            <td className="py-2.5 pl-1" onClick={(e) => e.stopPropagation()}>
-                              <input
-                                type="checkbox"
-                                checked={checked}
-                                onChange={() => toggleRow(entry.id, item.palletId)}
-                                className="w-4 h-4 accent-blue-500 cursor-pointer"
-                              />
-                            </td>
-                            <td className="py-2.5">
-                              <span className={`inline-flex w-6 h-6 rounded-full items-center
-                                               justify-center text-xs font-black ${
-                                checked ? 'bg-blue-600 text-white' : 'bg-gray-700 text-gray-400'
-                              }`}>{item.rank}</span>
-                            </td>
-                            <td className="py-2.5">
-                              <span className="font-bold text-white">{item.locationCode}</span>
-                              <span className="text-xs text-gray-500 ml-1.5">{item.zoneCode}구역</span>
-                              <div className="text-xs text-gray-600 font-mono">{item.palletCode}</div>
-                            </td>
-                            <td className="py-2.5 text-center">
-                              <span className="text-gray-300 font-mono text-xs bg-gray-700 px-2 py-0.5 rounded-lg">
-                                {item.tier}단 {SIDE_KO[item.side]}
-                              </span>
-                              {item.isMixed && (
-                                <div className="mt-0.5">
-                                  <span className="text-[10px] bg-amber-500 text-white
-                                                   px-1.5 py-0.5 rounded-full font-bold">혼적</span>
-                                </div>
-                              )}
-                            </td>
-                            <td className="py-2.5 text-right">
-                              <span className="font-bold text-white">{item.qty.toLocaleString()}</span>
-                              <span className="text-gray-500 text-xs ml-1">{entry.product?.unit}</span>
-                              <div className="text-xs text-gray-600">
-                                {new Date(item.inboundAt).toLocaleDateString('ko-KR')}
-                              </div>
-                            </td>
-                            <td className="py-2.5 text-right" onClick={(e) => e.stopPropagation()}>
-                              {checked ? (
-                                <div className="flex flex-col items-end gap-0.5">
-                                  <input
-                                    type="number"
-                                    min="1"
-                                    max={item.qty}
-                                    value={shipQty}
-                                    onChange={(e) => updateRowQty(entry.id, item.palletId, e.target.value, item.qty)}
-                                    className="w-20 bg-gray-700 border border-blue-500/50 rounded-lg
-                                               px-2 py-1 text-white text-sm text-right
-                                               focus:outline-none focus:ring-1 focus:ring-blue-500"
-                                  />
-                                  {isPartial && (
-                                    <span className="text-xs text-yellow-400">
-                                      잔량 {(item.qty - shipQty).toLocaleString()}
-                                    </span>
-                                  )}
-                                </div>
-                              ) : (
-                                <span className="text-gray-700 text-xs">—</span>
-                              )}
-                            </td>
-                          </tr>
-                        )
-                      })}
-                    </tbody>
-                  </table>
-                </div>
-              </>
-            )}
-          </div>
-        )
-      })}
-
-      {/* ── 출고 요약 + 확정 */}
-      {entries.length > 0 && (
-        <div className="wms-card space-y-4">
-          <h2 className="text-base font-semibold text-gray-300">출고 요약</h2>
-
-          {!hasAnySelection ? (
-            <p className="text-sm text-gray-600">
-              각 상품에서 파렛트를 체크하거나 출고수량을 입력하세요.
-            </p>
-          ) : (
-            <div className="space-y-2">
-              {entriesWithSelection
-                .filter((e) => e.selectedItems.length > 0)
-                .map((e) => {
-                  const total   = e.selectedItems.reduce((s, i) => s + i.shipQty, 0)
-                  const partial = e.selectedItems.filter((i) => i.isPartial).length
-                  return (
-                    <div key={e.id} className="flex items-center justify-between
-                                               bg-gray-800/50 rounded-xl px-4 py-3">
-                      <div>
-                        <p className="text-sm font-semibold text-white">{e.product?.name}</p>
-                        <p className="text-xs text-gray-500">
-                          {e.selectedItems.length}파렛트
-                          {partial > 0 && ` · 부분출고 ${partial}건 (잔량 유지)`}
-                        </p>
-                      </div>
-                      <span className="text-blue-300 font-bold text-base">
-                        {total.toLocaleString()} <span className="text-xs font-normal">{e.product?.unit}</span>
-                      </span>
-                    </div>
-                  )
-                })}
-            </div>
-          )}
-
-          <div className="flex justify-end pt-2 border-t border-gray-700">
-            <button
-              onClick={handleConfirm}
-              disabled={confirming || !hasAnySelection}
-              className="px-8 py-3 rounded-xl bg-red-600 hover:bg-red-500
-                         text-white font-bold transition-colors
-                         disabled:opacity-40 disabled:cursor-not-allowed"
-            >
-              {confirming
-                ? '처리 중...'
-                : !hasAnySelection
-                  ? '🚛 출고 확정'
-                  : `🚛 ${entriesWithSelection.filter((e) => e.selectedItems.length > 0).length}개 상품 출고 확정`}
+            <button onClick={() => setInstructing(order)}
+              className="shrink-0 px-5 py-2.5 rounded-xl bg-yellow-600 hover:bg-yellow-500 text-white text-sm font-bold transition-colors">
+              지시 →
             </button>
           </div>
         </div>
+      ))}
+
+      {instructing && (
+        <OutboundInstructModal
+          order={instructing}
+          onClose={() => setInstructing(null)}
+          onComplete={() => { setInstructing(null); fetchOrders(); onDone() }}
+        />
       )}
     </div>
   )
 }
+
+function OutboundInstructModal({ order, onClose, onComplete }) {
+  const [pickList, setPickList]   = useState([])  // FIFO 피킹 목록
+  const [loading, setLoading]     = useState(true)
+  const [confirming, setConfirming] = useState(false)
+  const [done, setDone]           = useState(false)
+  const [error, setError]         = useState('')
+
+  useEffect(() => {
+    const handler = e => { if (e.key === 'Escape') onClose() }
+    window.addEventListener('keydown', handler)
+    return () => window.removeEventListener('keydown', handler)
+  }, [onClose])
+
+  useEffect(() => {
+    (async () => {
+      setLoading(true)
+      try {
+        const { data: items } = await supabase
+          .from('outbound_order_items')
+          .select('product_id, required_qty, products(name, unit)')
+          .eq('order_id', order.id)
+
+        const all = []
+        for (const item of items ?? []) {
+          const fifo = await getFifoLocations(supabase, item.product_id)
+          const result = pickFifoItems(fifo, item.required_qty)
+          all.push({
+            productId:   item.product_id,
+            productName: item.products?.name ?? '',
+            unit:        item.products?.unit ?? '',
+            requiredQty: item.required_qty,
+            fulfilled:   result.fulfilled,
+            picks:       result.items,
+          })
+        }
+        setPickList(all)
+      } catch (err) {
+        setError(err.message)
+      }
+      setLoading(false)
+    })()
+  }, [order.id])
+
+  async function handleConfirm() {
+    setConfirming(true)
+    setError('')
+    try {
+      // outbound_order_pallets 저장
+      const palletRows = []
+      for (const entry of pickList) {
+        for (const pick of entry.picks) {
+          palletRows.push({
+            order_id:          order.id,
+            pallet_id:         pick.palletId,
+            ship_qty:          pick.shipQty,
+            is_partial:        pick.isPartial,
+            location_snapshot: pick.locationCode,
+            tier:              pick.tier,
+            side:              pick.side,
+          })
+        }
+      }
+      if (palletRows.length === 0) throw new Error('피킹할 재고가 없습니다.')
+
+      const { error: pErr } = await supabase.from('outbound_order_pallets').insert(palletRows)
+      if (pErr) throw pErr
+
+      const { error: oErr } = await supabase.from('outbound_orders')
+        .update({ status: 'instructed', instructed_at: new Date().toISOString() })
+        .eq('id', order.id)
+      if (oErr) throw oErr
+
+      setDone(true)
+    } catch (err) {
+      setError(err.message)
+    }
+    setConfirming(false)
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 no-print"
+      style={{ backgroundColor: 'rgba(0,0,0,0.8)' }} onClick={onClose}>
+      <div className="bg-gray-900 border border-gray-700 rounded-2xl w-full max-w-2xl shadow-2xl max-h-[90vh] flex flex-col"
+        onClick={e => e.stopPropagation()}>
+
+        <div className="flex items-center justify-between p-5 border-b border-gray-700">
+          <div>
+            <h2 className="text-lg font-bold text-white">출고지시 — FIFO 피킹 목록</h2>
+            <p className="text-sm text-gray-400">{order.order_no}</p>
+          </div>
+          <button onClick={onClose} className="text-gray-500 hover:text-white text-2xl leading-none">✕</button>
+        </div>
+
+        <div className="overflow-y-auto flex-1 p-5 space-y-4">
+          {done ? (
+            <div className="text-center py-8 space-y-3">
+              <p className="text-3xl">✅</p>
+              <p className="text-white font-bold text-lg">출고지시 완료</p>
+              <p className="text-gray-500 text-xs">출고완료 탭에서 작업자가 확인 후 최종 처리하세요.</p>
+            </div>
+          ) : loading ? (
+            <p className="text-center text-gray-500 py-8 animate-pulse">FIFO 분석 중...</p>
+          ) : (
+            pickList.map((entry, ei) => (
+              <div key={ei} className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <p className="font-semibold text-white text-sm">
+                    {entry.productName}
+                    <span className="text-gray-500 font-normal ml-2">요청 {entry.requiredQty}{entry.unit}</span>
+                  </p>
+                  {!entry.fulfilled && (
+                    <span className="text-xs text-red-400 bg-red-900/20 border border-red-700 px-2 py-0.5 rounded">재고 부족</span>
+                  )}
+                </div>
+                <div className="border border-gray-700 rounded-xl overflow-hidden">
+                  <table className="w-full text-xs">
+                    <thead className="bg-gray-800">
+                      <tr className="text-gray-400">
+                        <th className="px-3 py-2 text-left">#</th>
+                        <th className="px-3 py-2 text-left">로케이션</th>
+                        <th className="px-3 py-2 text-center">단/좌우</th>
+                        <th className="px-3 py-2 text-left">파렛트코드</th>
+                        <th className="px-3 py-2 text-right">출고수량</th>
+                        <th className="px-3 py-2 text-right">비고</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-800">
+                      {entry.picks.map((pick, pi) => (
+                        <tr key={pi} className="hover:bg-gray-800/40">
+                          <td className="px-3 py-2 text-gray-600">{pi + 1}</td>
+                          <td className="px-3 py-2 font-bold text-white">{pick.locationCode}</td>
+                          <td className="px-3 py-2 text-center text-gray-300">
+                            {pick.tier}단 {SIDE_KO[pick.side]}
+                          </td>
+                          <td className="px-3 py-2 font-mono text-gray-400">{pick.palletCode}</td>
+                          <td className="px-3 py-2 text-right font-bold text-green-400">
+                            {pick.shipQty.toLocaleString()}
+                          </td>
+                          <td className="px-3 py-2 text-right">
+                            {pick.isPartial && <span className="text-amber-400 text-[10px]">일부</span>}
+                            {pick.isMixed  && <span className="text-purple-400 text-[10px] ml-1">혼적</span>}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            ))
+          )}
+          {error && <p className="text-red-400 text-sm">{error}</p>}
+        </div>
+
+        <div className="p-5 border-t border-gray-700 flex gap-3">
+          {done ? (
+            <button onClick={onComplete}
+              className="flex-1 py-3 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-sm transition-colors">
+              출고완료 탭으로 →
+            </button>
+          ) : (
+            <>
+              <button onClick={onClose}
+                className="px-5 py-3 rounded-xl bg-gray-700 hover:bg-gray-600 text-white text-sm font-semibold transition-colors">
+                취소
+              </button>
+              <button onClick={handleConfirm}
+                disabled={confirming || loading || pickList.length === 0}
+                className="flex-1 py-3 rounded-xl bg-yellow-600 hover:bg-yellow-500 disabled:opacity-40 text-white font-bold text-sm transition-colors">
+                {confirming ? '처리 중...' : '✅ 지시 완료'}
+              </button>
+            </>
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ══════════════════════════════════════════════════
+// ③ 출고완료
+// ══════════════════════════════════════════════════
+function CompleteTab({ onDone }) {
+  const [orders, setOrders]   = useState([])
+  const [loading, setLoading] = useState(true)
+  const [completing, setCompleting] = useState(null)
+  const [expanded, setExpanded]     = useState({})
+
+  const fetchOrders = useCallback(async () => {
+    setLoading(true)
+    const { data } = await supabase
+      .from('outbound_orders')
+      .select(`id, order_no, client_name, instructed_at, note,
+               outbound_order_pallets (
+                 ship_qty, is_partial, location_snapshot, tier, side,
+                 pallets ( code )
+               ),
+               outbound_order_items ( required_qty, products ( name, unit ) )`)
+      .eq('status', 'instructed')
+      .order('instructed_at', { ascending: false })
+    setOrders(data ?? [])
+    setLoading(false)
+  }, [])
+
+  useEffect(() => { fetchOrders() }, [fetchOrders])
+
+  async function handleComplete(order) {
+    if (!confirm(`출고오더 ${order.order_no}을(를) 완료 처리하시겠습니까?`)) return
+    setCompleting(order.id)
+    try {
+      const picks = order.outbound_order_pallets ?? []
+      const palletIds = [...new Set(picks.map(p => p.pallets?.id ?? p.pallet_id).filter(Boolean))]
+
+      // pallets 조회 (실제 id 필요)
+      const { data: palletRows } = await supabase
+        .from('outbound_order_pallets')
+        .select('pallet_id, ship_qty, location_snapshot, tier, side')
+        .eq('order_id', order.id)
+
+      // 파렛트 상태 → outbound
+      const { error: pErr } = await supabase
+        .from('pallets').update({ status: 'outbound' })
+        .in('id', (palletRows ?? []).map(r => r.pallet_id))
+      if (pErr) throw pErr
+
+      // outbound_logs 생성
+      const { data: palletDetails } = await supabase
+        .from('pallets').select('id, location_id, tier, side')
+        .in('id', (palletRows ?? []).map(r => r.pallet_id))
+
+      const logRows = (palletDetails ?? []).map(p => ({
+        pallet_id:   p.id,
+        location_id: p.location_id,
+        tier:        p.tier,
+        side:        p.side,
+      }))
+      const { error: lErr } = await supabase.from('outbound_logs').insert(logRows)
+      if (lErr) throw lErr
+
+      // 오더 완료
+      const { error: oErr } = await supabase.from('outbound_orders')
+        .update({ status: 'completed', completed_at: new Date().toISOString() })
+        .eq('id', order.id)
+      if (oErr) throw oErr
+
+      fetchOrders()
+    } catch (err) {
+      alert('오류: ' + err.message)
+    }
+    setCompleting(null)
+  }
+
+  if (loading) return <p className="text-center text-gray-500 py-12 animate-pulse">불러오는 중...</p>
+  if (orders.length === 0)
+    return <p className="text-center text-gray-600 py-12">출고완료 대기 중인 오더가 없습니다.</p>
+
+  return (
+    <div className="space-y-3">
+      {orders.map(order => {
+        const isExpanded = !!expanded[order.id]
+        const picks = order.outbound_order_pallets ?? []
+        return (
+          <div key={order.id} className="wms-card space-y-3">
+            <div className="flex items-start justify-between gap-3">
+              <div className="flex-1">
+                <div className="flex items-center gap-2">
+                  <span className="font-mono text-yellow-400 font-bold text-sm">{order.order_no}</span>
+                  {order.client_name && <span className="text-xs bg-gray-700 text-gray-300 px-2 py-0.5 rounded-full">{order.client_name}</span>}
+                </div>
+                <div className="flex flex-wrap gap-1 mt-1">
+                  {(order.outbound_order_items ?? []).map((it, i) => (
+                    <span key={i} className="text-xs text-gray-400 bg-gray-800 px-2 py-0.5 rounded">
+                      {it.products?.name} {it.required_qty}{it.products?.unit}
+                    </span>
+                  ))}
+                </div>
+                <button onClick={() => setExpanded(e => ({ ...e, [order.id]: !e[order.id] }))}
+                  className="text-xs text-blue-400 hover:text-blue-300 mt-1 transition-colors">
+                  {isExpanded ? '▲ 피킹목록 접기' : `▼ 피킹목록 보기 (${picks.length}건)`}
+                </button>
+              </div>
+              <button onClick={() => handleComplete(order)}
+                disabled={completing === order.id}
+                className="shrink-0 px-5 py-2.5 rounded-xl bg-green-600 hover:bg-green-500 disabled:opacity-40 text-white text-sm font-bold transition-colors">
+                {completing === order.id ? '처리 중...' : '✅ 출고완료'}
+              </button>
+            </div>
+
+            {isExpanded && picks.length > 0 && (
+              <div className="border border-gray-700 rounded-xl overflow-hidden mt-2">
+                <table className="w-full text-xs">
+                  <thead className="bg-gray-800">
+                    <tr className="text-gray-400">
+                      <th className="px-3 py-2 text-left">로케이션</th>
+                      <th className="px-3 py-2 text-center">단/좌우</th>
+                      <th className="px-3 py-2 text-left">파렛트코드</th>
+                      <th className="px-3 py-2 text-right">출고수량</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-800">
+                    {picks.map((pick, i) => (
+                      <tr key={i} className="hover:bg-gray-800/40">
+                        <td className="px-3 py-2 font-bold text-white">{pick.location_snapshot}</td>
+                        <td className="px-3 py-2 text-center text-gray-300">
+                          {pick.tier}단 {SIDE_KO[pick.side]}
+                        </td>
+                        <td className="px-3 py-2 font-mono text-gray-400">{pick.pallets?.code}</td>
+                        <td className="px-3 py-2 text-right font-bold text-green-400">
+                          {pick.ship_qty?.toLocaleString()}
+                          {pick.is_partial && <span className="text-amber-400 text-[10px] ml-1">일부</span>}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        )
+      })}
+    </div>
+  )
+}
+
+function Field({ label, children }) {
+  return (
+    <div className="flex flex-col gap-1.5">
+      <label className="text-xs font-medium text-gray-400">{label}</label>
+      {children}
+    </div>
+  )
+}
+
+const inputCls = `w-full bg-gray-800 border border-gray-600 rounded-xl px-4 py-3
+  text-white text-sm placeholder-gray-600
+  focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500`
