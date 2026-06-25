@@ -38,11 +38,13 @@ export default function LocationsPage() {
 // 구역 탭
 // ════════════════════════════════════════
 function ZoneTab() {
-  const [zones, setZones]     = useState([])
-  const [form, setForm]       = useState({ code: '', name: '' })
-  const [saving, setSaving]   = useState(false)
-  const [error, setError]     = useState('')
+  const [zones, setZones]       = useState([])
+  const [form, setForm]         = useState({ code: '', name: '' })
+  const [saving, setSaving]     = useState(false)
+  const [error, setError]       = useState('')
   const [showBulk, setShowBulk] = useState(false)
+  const [editingId, setEditingId] = useState(null)
+  const [editForm, setEditForm]   = useState({ code: '', name: '' })
 
   const fetchZones = useCallback(async () => {
     const { data } = await supabase.from('zones')
@@ -63,6 +65,21 @@ function ZoneTab() {
     setSaving(false)
     if (err) return setError(err.code === '23505' ? '이미 존재하는 구역코드입니다.' : err.message)
     setForm({ code: '', name: '' })
+    fetchZones()
+  }
+
+  function startEdit(zone) {
+    setEditingId(zone.id)
+    setEditForm({ code: zone.code, name: zone.name })
+  }
+
+  async function handleEditSave(zone) {
+    if (!editForm.code.trim() || !editForm.name.trim()) return
+    const { error: err } = await supabase.from('zones')
+      .update({ code: editForm.code.trim().toUpperCase(), name: editForm.name.trim() })
+      .eq('id', zone.id)
+    if (err) { alert(err.code === '23505' ? '이미 존재하는 구역코드입니다.' : err.message); return }
+    setEditingId(null)
     fetchZones()
   }
 
@@ -120,14 +137,44 @@ function ZoneTab() {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-800">
-              {zones.map(z => (
-                <tr key={z.id} className="hover:bg-gray-800/40 transition-colors">
+              {zones.map(z => editingId === z.id ? (
+                <tr key={z.id} className="bg-blue-950/30">
+                  <td className="py-2 pr-2">
+                    <input value={editForm.code}
+                      onChange={e => setEditForm(f => ({ ...f, code: e.target.value }))}
+                      className={`${inputCls} py-1.5 text-sm font-bold w-24`}
+                      autoFocus onKeyDown={e => e.key === 'Enter' && handleEditSave(z)} />
+                  </td>
+                  <td className="py-2 pr-2">
+                    <input value={editForm.name}
+                      onChange={e => setEditForm(f => ({ ...f, name: e.target.value }))}
+                      className={`${inputCls} py-1.5 text-sm w-full`}
+                      onKeyDown={e => e.key === 'Enter' && handleEditSave(z)} />
+                  </td>
+                  <td className="py-2 text-center text-gray-400">{z.locations?.length ?? 0}개</td>
+                  <td className="py-2 text-right whitespace-nowrap">
+                    <button onClick={() => handleEditSave(z)}
+                      className="text-xs text-blue-400 hover:text-blue-300 font-semibold px-2 py-1 transition-colors">
+                      저장
+                    </button>
+                    <button onClick={() => setEditingId(null)}
+                      className="text-xs text-gray-600 hover:text-gray-400 px-2 py-1 transition-colors">
+                      취소
+                    </button>
+                  </td>
+                </tr>
+              ) : (
+                <tr key={z.id} className="hover:bg-gray-800/40 transition-colors group">
                   <td className="py-3 font-bold text-white text-lg">{z.code}</td>
                   <td className="py-3 text-gray-300">{z.name}</td>
                   <td className="py-3 text-center text-gray-400">{z.locations?.length ?? 0}개</td>
-                  <td className="py-3 text-right">
+                  <td className="py-3 text-right whitespace-nowrap">
+                    <button onClick={() => startEdit(z)}
+                      className="text-xs text-gray-600 hover:text-blue-400 transition-colors px-2 py-1 opacity-0 group-hover:opacity-100">
+                      수정
+                    </button>
                     <button onClick={() => handleDelete(z)}
-                      className="text-xs text-gray-600 hover:text-red-400 transition-colors px-2 py-1">
+                      className="text-xs text-gray-600 hover:text-red-400 transition-colors px-2 py-1 opacity-0 group-hover:opacity-100">
                       삭제
                     </button>
                   </td>
@@ -266,13 +313,15 @@ function BulkZoneModal({ onClose, onSuccess }) {
 // 로케이션 탭
 // ════════════════════════════════════════
 function LocationTab() {
-  const [zones, setZones]         = useState([])
-  const [zoneId, setZoneId]       = useState('')
-  const [locations, setLocations] = useState([])
-  const [form, setForm]           = useState({ code: '', grid_x: '', grid_y: '', aisle: '' })
-  const [saving, setSaving]       = useState(false)
-  const [error, setError]         = useState('')
-  const [showBulk, setShowBulk]   = useState(false)
+  const [zones, setZones]           = useState([])
+  const [zoneId, setZoneId]         = useState('')
+  const [locations, setLocations]   = useState([])
+  const [form, setForm]             = useState({ code: '', grid_x: '', grid_y: '', aisle: '' })
+  const [saving, setSaving]         = useState(false)
+  const [error, setError]           = useState('')
+  const [showBulk, setShowBulk]     = useState(false)
+  const [editingId, setEditingId]   = useState(null)
+  const [editForm, setEditForm]     = useState({ code: '', grid_x: '', grid_y: '', aisle: '' })
 
   useEffect(() => {
     supabase.from('zones').select('id, code, name').order('code')
@@ -304,6 +353,26 @@ function LocationTab() {
     setSaving(false)
     if (err) return setError(err.code === '23505' ? '이미 같은 코드 또는 좌표가 존재합니다.' : err.message)
     setForm({ code: '', grid_x: '', grid_y: '', aisle: '' })
+    fetchLocations(zoneId)
+  }
+
+  function startEdit(loc) {
+    setEditingId(loc.id)
+    setEditForm({ code: loc.code, grid_x: loc.grid_x, grid_y: loc.grid_y, aisle: loc.aisle ?? '' })
+  }
+
+  async function handleEditSave(loc) {
+    if (!editForm.code.trim() || !editForm.grid_x || !editForm.grid_y) return
+    const { error: err } = await supabase.from('locations')
+      .update({
+        code:   editForm.code.trim().toUpperCase(),
+        grid_x: Number(editForm.grid_x),
+        grid_y: Number(editForm.grid_y),
+        aisle:  editForm.aisle.trim() || null,
+      })
+      .eq('id', loc.id)
+    if (err) { alert(err.code === '23505' ? '이미 같은 코드 또는 좌표가 존재합니다.' : err.message); return }
+    setEditingId(null)
     fetchLocations(zoneId)
   }
 
@@ -423,8 +492,55 @@ function LocationTab() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-800">
-                  {locations.map(l => (
-                    <tr key={l.id} className="hover:bg-gray-800/40 transition-colors">
+                  {locations.map(l => editingId === l.id ? (
+                    <tr key={l.id} className="bg-blue-950/30">
+                      <td className="py-1.5 pr-1">
+                        <input value={editForm.code}
+                          onChange={e => setEditForm(f => ({ ...f, code: e.target.value }))}
+                          className={`${inputCls} py-1 text-xs font-mono font-bold w-24`}
+                          autoFocus />
+                      </td>
+                      <td className="py-1.5 pr-1 text-center">
+                        <input type="number" min="1" value={editForm.grid_x}
+                          onChange={e => setEditForm(f => ({ ...f, grid_x: e.target.value }))}
+                          className={`${inputCls} py-1 text-xs text-center w-14`} />
+                      </td>
+                      <td className="py-1.5 pr-1 text-center">
+                        <input type="number" min="1" value={editForm.grid_y}
+                          onChange={e => setEditForm(f => ({ ...f, grid_y: e.target.value }))}
+                          className={`${inputCls} py-1 text-xs text-center w-14`} />
+                      </td>
+                      <td className="py-1.5 pr-1">
+                        <input value={editForm.aisle}
+                          onChange={e => setEditForm(f => ({ ...f, aisle: e.target.value }))}
+                          placeholder="통로"
+                          className={`${inputCls} py-1 text-xs w-24`}
+                          onKeyDown={e => e.key === 'Enter' && handleEditSave(l)} />
+                      </td>
+                      <td className="py-1.5 text-center text-gray-400">{l.pallets?.length ?? 0}</td>
+                      <td className="py-1.5 text-center">
+                        <button onClick={() => handleToggleActive(l)}
+                          className={`text-xs px-2 py-1 rounded-full font-semibold transition-colors ${
+                            l.is_active
+                              ? 'bg-green-900/40 text-green-400 hover:bg-green-900/60'
+                              : 'bg-gray-700 text-gray-500 hover:bg-gray-600'
+                          }`}>
+                          {l.is_active ? '활성' : '비활성'}
+                        </button>
+                      </td>
+                      <td className="py-1.5 text-right whitespace-nowrap">
+                        <button onClick={() => handleEditSave(l)}
+                          className="text-xs text-blue-400 hover:text-blue-300 font-semibold px-2 py-1 transition-colors">
+                          저장
+                        </button>
+                        <button onClick={() => setEditingId(null)}
+                          className="text-xs text-gray-600 hover:text-gray-400 px-2 py-1 transition-colors">
+                          취소
+                        </button>
+                      </td>
+                    </tr>
+                  ) : (
+                    <tr key={l.id} className="hover:bg-gray-800/40 transition-colors group">
                       <td className="py-2.5 font-bold text-white font-mono">{l.code}</td>
                       <td className="py-2.5 text-center text-gray-400">{l.grid_x}</td>
                       <td className="py-2.5 text-center text-gray-400">{l.grid_y}</td>
@@ -440,9 +556,13 @@ function LocationTab() {
                           {l.is_active ? '활성' : '비활성'}
                         </button>
                       </td>
-                      <td className="py-2.5 text-right">
+                      <td className="py-2.5 text-right whitespace-nowrap">
+                        <button onClick={() => startEdit(l)}
+                          className="text-xs text-gray-600 hover:text-blue-400 transition-colors px-2 py-1 opacity-0 group-hover:opacity-100">
+                          수정
+                        </button>
                         <button onClick={() => handleDelete(l)}
-                          className="text-xs text-gray-600 hover:text-red-400 transition-colors px-2 py-1">
+                          className="text-xs text-gray-600 hover:text-red-400 transition-colors px-2 py-1 opacity-0 group-hover:opacity-100">
                           삭제
                         </button>
                       </td>
