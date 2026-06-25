@@ -21,6 +21,7 @@ export default async function RootLayout({ children }) {
   const isLoggedIn = devAdmin || userPayload !== null
   const isAdmin    = devAdmin || userPayload?.role === 'admin'
   const displayName = devAdmin ? '개발관리자' : (userPayload?.displayName ?? null)
+  const position    = devAdmin ? '' : (userPayload?.position ?? '')
 
   return (
     <html lang="ko">
@@ -55,7 +56,13 @@ export default async function RootLayout({ children }) {
             )}
             <div className="w-px h-5 bg-gray-700 mx-1 hidden sm:block" />
             {displayName && (
-              <span className="text-xs text-gray-500 hidden sm:block px-2">{displayName}</span>
+              <span className="hidden sm:flex items-center gap-1.5 px-2">
+                {position && (
+                  <span className="text-xs text-gray-500 bg-gray-800 border border-gray-700
+                                   px-2 py-0.5 rounded-full">{position}</span>
+                )}
+                <span className="text-xs text-gray-300 font-medium">{displayName}</span>
+              </span>
             )}
             <AuthButton isLoggedIn={isLoggedIn} />
           </nav>

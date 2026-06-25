@@ -41,6 +41,7 @@ export async function POST(req) {
     username:    user.username,
     displayName: user.display_name,
     role:        user.role,
+    position:    user.position ?? '사용자',
   })
 
   const res = NextResponse.json({ ok: true, role: user.role })
