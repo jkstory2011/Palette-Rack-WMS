@@ -1,9 +1,10 @@
 'use client'
 
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, useRef } from 'react'
 import { supabase } from '@/lib/supabase'
 import { generatePalletCode } from '@/lib/utils/pallet'
 import BarcodeInput from '@/components/BarcodeInput'
+import JsBarcode from 'jsbarcode'
 
 const TIERS = [4, 3, 2, 1]
 const SIDES = ['L', 'R']
@@ -29,6 +30,7 @@ export default function InboundPage() {
   const [saving, setSaving]         = useState(false)
   const [error, setError]           = useState('')
   const [success, setSuccess]       = useState('')
+  const [printLabel, setPrintLabel] = useState(null)  // 입고 완료 후 라벨 데이터
 
   // ── 초기 데이터 로드
   useEffect(() => {
@@ -158,6 +160,21 @@ export default function InboundPage() {
         side:        form.side,
       })
 
+      // 라벨 출력용 데이터 준비
+      const locationCode = locations.find((l) => String(l.id) === String(form.locationId))?.code ?? ''
+      const labelItems = form.items.map((it) => {
+        const prod = products.find((p) => String(p.id) === String(it.productId))
+        return { productName: prod?.name ?? '', unit: prod?.unit ?? '', qty: Number(it.qty) }
+      })
+      setPrintLabel({
+        code: form.palletCode,
+        locationCode,
+        tier: form.tier,
+        side: form.side,
+        expiryAt: form.expiryAt || null,
+        items: labelItems,
+        inboundAt: new Date(),
+      })
       setSuccess(`✅ 파렛트 ${form.palletCode} 입고 완료`)
       setForm({ ...INIT_FORM })
       setSelectedZone('')
@@ -352,6 +369,127 @@ export default function InboundPage() {
           {saving ? '입고 처리 중...' : '📦 입고 등록'}
         </button>
       </form>
+
+      {/* ── 파렛트 라벨 출력 모달 */}
+      {printLabel && (
+        <PalletLabelModal
+          label={printLabel}
+          onClose={() => setPrintLabel(null)}
+        />
+      )}
+    </div>
+  )
+}
+
+// ── 파렛트 라벨 출력 모달
+function PalletLabelModal({ label, onClose }) {
+  const svgRef = useRef(null)
+
+  useEffect(() => {
+    if (!svgRef.current || !label.code) return
+    JsBarcode(svgRef.current, label.code, {
+      format: 'CODE128',
+      width: 2.2,
+      height: 72,
+      displayValue: true,
+      fontSize: 13,
+      margin: 8,
+      background: '#ffffff',
+      lineColor: '#000000',
+    })
+  }, [label.code])
+
+  function handlePrint() {
+    document.body.classList.add('printing-label')
+    window.print()
+    document.body.classList.remove('printing-label')
+  }
+
+  return (
+    <div className="no-print fixed inset-0 z-50 flex items-center justify-center p-4"
+      style={{ backgroundColor: 'rgba(0,0,0,0.85)' }}>
+
+      <div className="bg-white rounded-2xl w-full max-w-sm shadow-2xl overflow-hidden">
+
+        {/* 모달 헤더 */}
+        <div className="bg-gray-800 px-5 py-3 flex items-center justify-between">
+          <p className="text-white text-sm font-semibold">🖨️ 파렛트 라벨 출력</p>
+          <button onClick={onClose}
+            className="text-gray-400 hover:text-white text-xl leading-none transition-colors">
+            ✕
+          </button>
+        </div>
+
+        {/* 라벨 영역 (인쇄 대상) */}
+        <div className="label-print-area bg-white p-5 text-black">
+
+          {/* 바코드 */}
+          <div className="text-center mb-3">
+            <svg ref={svgRef} className="w-full" />
+          </div>
+
+          <div className="border-t border-gray-300 pt-3 space-y-1.5 text-sm">
+            <div className="flex justify-between">
+              <span className="text-gray-500">로케이션</span>
+              <span className="font-bold text-lg">{label.locationCode}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-gray-500">위치</span>
+              <span className="font-bold">{label.tier}단 {label.side === 'L' ? '좌(L)' : '우(R)'}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-gray-500">입고일</span>
+              <span className="font-semibold">
+                {label.inboundAt.toLocaleDateString('ko-KR')}
+              </span>
+            </div>
+            {label.expiryAt && (
+              <div className="flex justify-between">
+                <span className="text-gray-500">유통기한</span>
+                <span className="font-semibold text-red-600">
+                  {new Date(label.expiryAt).toLocaleDateString('ko-KR')}
+                </span>
+              </div>
+            )}
+          </div>
+
+          <div className="border-t border-gray-300 mt-3 pt-3">
+            <p className="text-xs text-gray-400 mb-1.5">상품 목록</p>
+            <div className="space-y-1">
+              {label.items.map((item, i) => (
+                <div key={i} className="flex justify-between text-sm">
+                  <span className="font-medium truncate mr-2">{item.productName}</span>
+                  <span className="font-bold shrink-0 text-gray-700">
+                    {item.qty.toLocaleString()} {item.unit}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="mt-3 pt-2 border-t border-gray-200 text-center">
+            <p className="text-xs text-gray-400">Palette Rack WMS</p>
+          </div>
+        </div>
+
+        {/* 버튼 영역 */}
+        <div className="no-print bg-gray-50 border-t border-gray-200 p-4 flex gap-3">
+          <button
+            onClick={handlePrint}
+            className="flex-1 py-3 rounded-xl bg-blue-600 hover:bg-blue-500
+                       text-white font-bold text-sm transition-colors"
+          >
+            🖨️ 라벨 인쇄
+          </button>
+          <button
+            onClick={onClose}
+            className="flex-1 py-3 rounded-xl bg-gray-200 hover:bg-gray-300
+                       text-gray-800 font-bold text-sm transition-colors"
+          >
+            다음 입고
+          </button>
+        </div>
+      </div>
     </div>
   )
 }

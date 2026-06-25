@@ -35,5 +35,15 @@
   @media print {
     .no-print { display: none !important; }
     body { background: white; color: black; font-size: 12pt; }
+
+    /* 라벨 인쇄 모드 */
+    body.printing-label * { visibility: hidden; }
+    body.printing-label .label-print-area,
+    body.printing-label .label-print-area * { visibility: visible; }
+    body.printing-label .label-print-area {
+      position: fixed; top: 0; left: 0;
+      width: 100%; padding: 16px;
+      background: white; color: black;
+    }
   }
 }
