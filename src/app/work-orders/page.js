@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, useRef } from 'react'
+import { useEffect, useState, useRef, useCallback } from 'react'
 import { supabase } from '@/lib/supabase'
 import JsBarcode from 'jsbarcode'
 
@@ -13,13 +13,452 @@ const PERIOD_OPTIONS = [
   { label: '90일', value: '90' },
 ]
 
+// 오더 상태 메타
+const STATUS_META = {
+  registered:  { label: '등록',   cls: 'bg-blue-600/20  text-blue-400  border-blue-600/40'  },
+  instructed:  { label: '지시',   cls: 'bg-yellow-600/20 text-yellow-400 border-yellow-600/40' },
+  on_hold:     { label: '보류',   cls: 'bg-orange-600/20 text-orange-400 border-orange-600/40' },
+  cancelled:   { label: '취소',   cls: 'bg-gray-600/20  text-gray-400  border-gray-600/40'   },
+  completed:   { label: '완료',   cls: 'bg-green-600/20  text-green-400  border-green-600/40'  },
+  in_progress: { label: '진행중', cls: 'bg-cyan-600/20  text-cyan-400  border-cyan-600/40'   },
+}
+
+// 상태별 가능한 액션
+const ACTIONS_BY_STATUS = {
+  registered: ['hold', 'cancel', 'delete'],
+  instructed: ['rerequest', 'hold', 'cancel'],
+  on_hold:    ['rerequest', 'cancel', 'delete'],
+  cancelled:  ['delete'],
+}
+
+const ACTION_META = {
+  rerequest: { label: '재요청',  emoji: '🔄', btnCls: 'bg-blue-700 hover:bg-blue-600'    },
+  hold:      { label: '보류',   emoji: '⏸',  btnCls: 'bg-orange-700 hover:bg-orange-600' },
+  cancel:    { label: '취소',   emoji: '🚫',  btnCls: 'bg-gray-700 hover:bg-gray-600'    },
+  delete:    { label: '삭제',   emoji: '🗑',  btnCls: 'bg-red-800 hover:bg-red-700'      },
+}
+
 export default function WorkOrdersPage() {
+  const [tab, setTab] = useState('orders')
+
+  return (
+    <div className="max-w-5xl mx-auto space-y-5">
+      <h1 className="text-2xl font-bold text-white">작업지시서</h1>
+
+      <div className="flex gap-2 border-b border-gray-700">
+        {[
+          { key: 'orders', label: '📋 오더 관리' },
+          { key: 'logs',   label: '📜 작업 이력' },
+        ].map(({ key, label }) => (
+          <button key={key} onClick={() => setTab(key)}
+            className={`px-5 py-3 text-sm font-semibold rounded-t-xl transition-colors ${
+              tab === key
+                ? 'bg-gray-800 text-white border-t border-l border-r border-gray-700'
+                : 'text-gray-500 hover:text-gray-300'
+            }`}>
+            {label}
+          </button>
+        ))}
+      </div>
+
+      {tab === 'orders' && <OrdersTab />}
+      {tab === 'logs'   && <LogsTab />}
+    </div>
+  )
+}
+
+// ══════════════════════════════════════════════════
+// 오더 관리 탭
+// ══════════════════════════════════════════════════
+function OrdersTab() {
+  const [orders, setOrders]         = useState([])
+  const [loading, setLoading]       = useState(true)
+  const [typeFilter, setTypeFilter] = useState('all')
+  const [statusFilter, setStatusFilter] = useState('active')  // active | all
+  const [actionTarget, setActionTarget] = useState(null)      // { order, action }
+
+  const fetchOrders = useCallback(async () => {
+    setLoading(true)
+    const [{ data: inbound }, { data: outbound }] = await Promise.all([
+      supabase.from('inbound_orders')
+        .select(`id, order_no, status, status_reason, client_name,
+                 scheduled_date, pallet_count, note, created_at, instructed_at,
+                 inbound_order_items ( qty_per_pallet, products ( name, unit ) )`)
+        .order('created_at', { ascending: false }),
+      supabase.from('outbound_orders')
+        .select(`id, order_no, status, status_reason, client_name,
+                 scheduled_date, note, created_at, instructed_at,
+                 outbound_order_items ( required_qty, products ( name, unit ) )`)
+        .order('created_at', { ascending: false }),
+    ])
+
+    const toRow = (o, type) => ({
+      ...o, type,
+      items: type === 'inbound'
+        ? (o.inbound_order_items  ?? []).map(it => ({ name: it.products?.name, unit: it.products?.unit, qty: it.qty_per_pallet }))
+        : (o.outbound_order_items ?? []).map(it => ({ name: it.products?.name, unit: it.products?.unit, qty: it.required_qty  })),
+    })
+
+    const merged = [
+      ...(inbound  ?? []).map(o => toRow(o, 'inbound')),
+      ...(outbound ?? []).map(o => toRow(o, 'outbound')),
+    ].sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
+
+    setOrders(merged)
+    setLoading(false)
+  }, [])
+
+  useEffect(() => { fetchOrders() }, [fetchOrders])
+
+  async function applyAction(order, action, reason) {
+    const table = order.type === 'inbound' ? 'inbound_orders' : 'outbound_orders'
+
+    if (action === 'delete') {
+      // instructed 상태면 먼저 파렛트/피킹 레코드 정리
+      if (order.type === 'inbound' && order.status === 'instructed') {
+        await supabase.from('pallets').delete().eq('inbound_order_id', order.id)
+      }
+      if (order.type === 'outbound' && order.status === 'instructed') {
+        await supabase.from('outbound_order_pallets').delete().eq('order_id', order.id)
+      }
+      await supabase.from(table).delete().eq('id', order.id)
+    } else {
+      let newStatus = order.status
+      if (action === 'hold')      newStatus = 'on_hold'
+      if (action === 'cancel')    newStatus = 'cancelled'
+      if (action === 'rerequest') {
+        newStatus = 'registered'
+        // 재요청 시 이전 지시 데이터 초기화
+        if (order.type === 'inbound') {
+          await supabase.from('pallets').delete().eq('inbound_order_id', order.id).eq('status', 'pending')
+        }
+        if (order.type === 'outbound') {
+          await supabase.from('outbound_order_pallets').delete().eq('order_id', order.id)
+        }
+      }
+
+      await supabase.from(table)
+        .update({ status: newStatus, status_reason: reason || null })
+        .eq('id', order.id)
+    }
+    setActionTarget(null)
+    fetchOrders()
+  }
+
+  const ACTIVE_STATUSES = ['registered', 'instructed', 'on_hold']
+
+  const filtered = orders.filter(o => {
+    if (typeFilter === 'inbound'  && o.type !== 'inbound')  return false
+    if (typeFilter === 'outbound' && o.type !== 'outbound') return false
+    if (statusFilter === 'active' && !ACTIVE_STATUSES.includes(o.status)) return false
+    return true
+  })
+
+  const counts = {
+    registered: orders.filter(o => o.status === 'registered').length,
+    instructed:  orders.filter(o => o.status === 'instructed').length,
+    on_hold:     orders.filter(o => o.status === 'on_hold').length,
+    cancelled:   orders.filter(o => o.status === 'cancelled').length,
+  }
+
+  return (
+    <div className="space-y-4">
+      {/* 현황 요약 */}
+      <div className="grid grid-cols-4 gap-3">
+        {[
+          { key: 'registered', label: '등록',  color: 'text-blue-400'   },
+          { key: 'instructed', label: '지시',  color: 'text-yellow-400' },
+          { key: 'on_hold',    label: '보류',  color: 'text-orange-400' },
+          { key: 'cancelled',  label: '취소',  color: 'text-gray-400'   },
+        ].map(({ key, label, color }) => (
+          <div key={key} className="wms-card text-center py-3">
+            <p className={`text-2xl font-black ${color}`}>{counts[key]}</p>
+            <p className="text-xs text-gray-500 mt-0.5">{label}</p>
+          </div>
+        ))}
+      </div>
+
+      {/* 필터 */}
+      <div className="wms-card flex flex-wrap items-center gap-3">
+        <div className="flex gap-1.5">
+          {[
+            { val: 'all',      label: '전체' },
+            { val: 'inbound',  label: '📥 입고' },
+            { val: 'outbound', label: '🚛 출고' },
+          ].map(({ val, label }) => (
+            <button key={val} onClick={() => setTypeFilter(val)}
+              className={`px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${
+                typeFilter === val ? 'bg-blue-600 text-white' : 'bg-gray-800 text-gray-400 hover:text-white'
+              }`}>
+              {label}
+            </button>
+          ))}
+        </div>
+        <div className="flex-1" />
+        <div className="flex gap-1.5">
+          {[
+            { val: 'active', label: '진행중' },
+            { val: 'all',    label: '전체 이력' },
+          ].map(({ val, label }) => (
+            <button key={val} onClick={() => setStatusFilter(val)}
+              className={`px-3 py-2 rounded-lg text-xs font-semibold transition-colors ${
+                statusFilter === val ? 'bg-gray-600 text-white' : 'bg-gray-800 text-gray-500 hover:text-white'
+              }`}>
+              {label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* 오더 목록 */}
+      {loading ? (
+        <p className="text-center text-gray-500 py-12 animate-pulse">불러오는 중...</p>
+      ) : filtered.length === 0 ? (
+        <p className="text-center text-gray-600 py-12">해당 조건의 오더가 없습니다.</p>
+      ) : (
+        <div className="space-y-3">
+          {filtered.map(order => {
+            const st = STATUS_META[order.status] ?? STATUS_META.registered
+            const actions = ACTIONS_BY_STATUS[order.status] ?? []
+            return (
+              <div key={`${order.type}-${order.id}`} className="wms-card">
+                <div className="flex items-start gap-3">
+                  {/* 유형 뱃지 */}
+                  <div className="shrink-0 pt-0.5">
+                    {order.type === 'inbound' ? (
+                      <span className="text-xs font-bold px-2 py-1 rounded-full bg-green-900/40 text-green-400 border border-green-800">📥 입고</span>
+                    ) : (
+                      <span className="text-xs font-bold px-2 py-1 rounded-full bg-red-900/40 text-red-400 border border-red-800">🚛 출고</span>
+                    )}
+                  </div>
+
+                  {/* 오더 정보 */}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="font-mono font-bold text-blue-400 text-sm">{order.order_no}</span>
+                      <span className={`text-xs px-2 py-0.5 rounded-full border ${st.cls}`}>{st.label}</span>
+                      {order.client_name && (
+                        <span className="text-xs bg-gray-700 text-gray-300 px-2 py-0.5 rounded-full">{order.client_name}</span>
+                      )}
+                    </div>
+
+                    <div className="flex flex-wrap gap-1 mt-1.5">
+                      {order.items.map((it, i) => (
+                        <span key={i} className="text-xs text-gray-400 bg-gray-800 px-2 py-0.5 rounded">
+                          {it.name} × {it.qty}{it.unit}
+                        </span>
+                      ))}
+                      {order.type === 'inbound' && order.pallet_count && (
+                        <span className="text-xs text-yellow-500 bg-yellow-900/20 border border-yellow-800/40 px-2 py-0.5 rounded">
+                          파렛트 {order.pallet_count}개
+                        </span>
+                      )}
+                    </div>
+
+                    {/* 사유 표시 */}
+                    {order.status_reason && (
+                      <p className="text-xs text-orange-400 bg-orange-900/20 border border-orange-800/30 px-3 py-1.5 rounded-lg mt-2">
+                        💬 {order.status_reason}
+                      </p>
+                    )}
+
+                    <p className="text-xs text-gray-600 mt-1.5">
+                      등록: {new Date(order.created_at).toLocaleString('ko-KR')}
+                      {order.scheduled_date && ` · 예정: ${order.scheduled_date}`}
+                    </p>
+                  </div>
+
+                  {/* 액션 버튼 */}
+                  {actions.length > 0 && (
+                    <div className="flex flex-col gap-1.5 shrink-0">
+                      {actions.map(action => {
+                        const meta = ACTION_META[action]
+                        return (
+                          <button key={action}
+                            onClick={() => setActionTarget({ order, action })}
+                            className={`px-3 py-1.5 rounded-lg text-white text-xs font-bold transition-colors ${meta.btnCls}`}>
+                            {meta.emoji} {meta.label}
+                          </button>
+                        )
+                      })}
+                    </div>
+                  )}
+                </div>
+              </div>
+            )
+          })}
+        </div>
+      )}
+
+      {/* 액션 사유 모달 */}
+      {actionTarget && (
+        <ActionModal
+          order={actionTarget.order}
+          action={actionTarget.action}
+          onClose={() => setActionTarget(null)}
+          onConfirm={(reason) => applyAction(actionTarget.order, actionTarget.action, reason)}
+        />
+      )}
+    </div>
+  )
+}
+
+// ══════════════════════════════════════════════════
+// 액션 사유 입력 모달
+// ══════════════════════════════════════════════════
+function ActionModal({ order, action, onClose, onConfirm }) {
+  const [reason, setReason] = useState('')
+  const [loading, setLoading] = useState(false)
+  const inputRef = useRef(null)
+
+  const meta = ACTION_META[action]
+
+  const PRESET_REASONS = {
+    rerequest: ['로케이션 재배정 필요', '상품 구성 변경', '일정 재조정', '작업자 요청'],
+    hold:      ['작업자 부족', '창고 공간 부족', '화주사 요청', '상품 검수 필요', '장비 점검 중'],
+    cancel:    ['화주사 오더 취소', '상품 미도착', '수량 불일치', '계약 변경'],
+    delete:    ['테스트 데이터', '중복 등록', '오입력'],
+  }
+
+  const presets = PRESET_REASONS[action] ?? []
+  const isDelete = action === 'delete'
+  const requireReason = !isDelete  // 삭제 외에는 사유 권장
+
+  useEffect(() => {
+    const handler = e => { if (e.key === 'Escape') onClose() }
+    window.addEventListener('keydown', handler)
+    inputRef.current?.focus()
+    return () => window.removeEventListener('keydown', handler)
+  }, [onClose])
+
+  async function handleConfirm() {
+    setLoading(true)
+    await onConfirm(reason)
+    setLoading(false)
+  }
+
+  const typeLabel = order.type === 'inbound' ? '입고' : '출고'
+
+  // 위험 레벨별 색상
+  const dangerCls = isDelete
+    ? 'bg-red-700 hover:bg-red-600'
+    : action === 'cancel'
+    ? 'bg-gray-700 hover:bg-gray-600'
+    : action === 'hold'
+    ? 'bg-orange-700 hover:bg-orange-600'
+    : 'bg-blue-700 hover:bg-blue-600'
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4"
+      style={{ backgroundColor: 'rgba(0,0,0,0.82)' }} onClick={onClose}>
+      <div className="bg-gray-900 border border-gray-700 rounded-2xl w-full max-w-md shadow-2xl"
+        onClick={e => e.stopPropagation()}>
+
+        {/* 헤더 */}
+        <div className="px-6 py-5 border-b border-gray-700">
+          <div className="flex items-center gap-3">
+            <span className="text-2xl">{meta.emoji}</span>
+            <div>
+              <h2 className="text-white font-bold text-lg">{meta.label} 처리</h2>
+              <p className="text-gray-400 text-xs mt-0.5">
+                {typeLabel} 오더 · <span className="font-mono text-blue-400">{order.order_no}</span>
+              </p>
+            </div>
+          </div>
+
+          {/* 오더 요약 */}
+          <div className="mt-3 bg-gray-800 rounded-xl px-4 py-3 text-xs space-y-1">
+            <div className="flex gap-2">
+              <span className="text-gray-500 w-12">상태</span>
+              <span className="text-white">{STATUS_META[order.status]?.label ?? order.status}</span>
+            </div>
+            {order.client_name && (
+              <div className="flex gap-2">
+                <span className="text-gray-500 w-12">화주사</span>
+                <span className="text-white">{order.client_name}</span>
+              </div>
+            )}
+            <div className="flex gap-2">
+              <span className="text-gray-500 w-12">상품</span>
+              <span className="text-gray-300 truncate">
+                {order.items.map(it => `${it.name} ${it.qty}${it.unit}`).join(', ')}
+              </span>
+            </div>
+          </div>
+
+          {/* 재요청 / 삭제 경고 */}
+          {action === 'rerequest' && order.status === 'instructed' && (
+            <p className="mt-3 text-xs text-yellow-400 bg-yellow-900/20 border border-yellow-800/30 rounded-lg px-3 py-2">
+              ⚠️ 입고지시 시 배정된 파렛트/슬롯이 초기화되고 다시 등록 상태로 돌아갑니다.
+            </p>
+          )}
+          {isDelete && (
+            <p className="mt-3 text-xs text-red-400 bg-red-900/20 border border-red-800/30 rounded-lg px-3 py-2">
+              ⚠️ 삭제된 오더는 복구할 수 없습니다.
+            </p>
+          )}
+        </div>
+
+        {/* 사유 입력 */}
+        <div className="px-6 py-5 space-y-3">
+          <label className="text-xs font-medium text-gray-400">
+            사유 {requireReason ? <span className="text-gray-600">(선택)</span> : <span className="text-gray-600">(선택)</span>}
+          </label>
+
+          {/* 빠른 선택 */}
+          {presets.length > 0 && (
+            <div className="flex flex-wrap gap-2">
+              {presets.map(p => (
+                <button key={p} type="button"
+                  onClick={() => setReason(p)}
+                  className={`text-xs px-3 py-1.5 rounded-full border transition-colors ${
+                    reason === p
+                      ? 'bg-blue-600 border-blue-600 text-white'
+                      : 'border-gray-600 text-gray-400 hover:border-gray-400 hover:text-gray-200'
+                  }`}>
+                  {p}
+                </button>
+              ))}
+            </div>
+          )}
+
+          <textarea
+            ref={inputRef}
+            value={reason}
+            onChange={e => setReason(e.target.value)}
+            placeholder="직접 사유를 입력하거나 위에서 선택하세요..."
+            rows={3}
+            className="w-full bg-gray-800 border border-gray-600 rounded-xl px-4 py-3
+                       text-white text-sm placeholder-gray-600 resize-none
+                       focus:outline-none focus:ring-2 focus:ring-blue-500/50" />
+        </div>
+
+        {/* 하단 버튼 */}
+        <div className="px-6 pb-5 flex gap-2">
+          <button onClick={onClose}
+            className="flex-1 py-3 rounded-xl bg-gray-800 hover:bg-gray-700 text-gray-300 font-semibold text-sm transition-colors">
+            취소
+          </button>
+          <button onClick={handleConfirm} disabled={loading}
+            className={`flex-1 py-3 rounded-xl text-white font-bold text-sm transition-colors disabled:opacity-40 ${dangerCls}`}>
+            {loading ? '처리 중...' : `${meta.emoji} ${meta.label} 확인`}
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ══════════════════════════════════════════════════
+// 작업 이력 탭 (기존 로그 조회)
+// ══════════════════════════════════════════════════
+function LogsTab() {
   const [logs, setLogs]               = useState([])
   const [loading, setLoading]         = useState(true)
   const [search, setSearch]           = useState('')
   const [typeFilter, setTypeFilter]   = useState('all')
   const [periodFilter, setPeriodFilter] = useState('7')
-  const [selected, setSelected]       = useState(null)  // 팝업에 표시할 로그
+  const [selected, setSelected]       = useState(null)
 
   async function fetchLogs(period) {
     setLoading(true)
@@ -28,16 +467,13 @@ export default function WorkOrdersPage() {
     const sinceISO = since.toISOString()
 
     const [{ data: inbound }, { data: outbound }] = await Promise.all([
-      supabase
-        .from('inbound_logs')
+      supabase.from('inbound_logs')
         .select(`id, created_at, operator, tier, side,
                  pallets ( code, pallet_items ( qty, products ( code, name, unit ) ) ),
                  locations ( code, zones ( code, name ) )`)
         .gte('created_at', sinceISO)
         .order('created_at', { ascending: false }),
-
-      supabase
-        .from('outbound_logs')
+      supabase.from('outbound_logs')
         .select(`id, created_at, operator, tier, side,
                  pallets ( code, pallet_items ( qty, products ( code, name, unit ) ) ),
                  locations ( code, zones ( code, name ) )`)
@@ -87,14 +523,9 @@ export default function WorkOrdersPage() {
     )
   })
 
-  const inboundCount  = filtered.filter(l => l.type === 'inbound').length
-  const outboundCount = filtered.filter(l => l.type === 'outbound').length
-
   return (
-    <div className="max-w-5xl mx-auto space-y-6">
-      <h1 className="text-2xl font-bold text-white">작업지시서</h1>
-
-      {/* ── 필터 */}
+    <div className="space-y-4">
+      {/* 필터 */}
       <div className="wms-card space-y-4">
         <div className="flex flex-wrap items-center gap-3">
           <div className="flex gap-1.5">
@@ -105,9 +536,7 @@ export default function WorkOrdersPage() {
             ].map(({ val, label }) => (
               <button key={val} onClick={() => setTypeFilter(val)}
                 className={`px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${
-                  typeFilter === val
-                    ? 'bg-blue-600 text-white'
-                    : 'bg-gray-800 text-gray-400 hover:text-white hover:bg-gray-700'
+                  typeFilter === val ? 'bg-blue-600 text-white' : 'bg-gray-800 text-gray-400 hover:text-white hover:bg-gray-700'
                 }`}>
                 {label}
               </button>
@@ -118,16 +547,13 @@ export default function WorkOrdersPage() {
             {PERIOD_OPTIONS.map(({ label, value }) => (
               <button key={value} onClick={() => setPeriodFilter(value)}
                 className={`px-3 py-2 rounded-lg text-xs font-semibold transition-colors ${
-                  periodFilter === value
-                    ? 'bg-gray-600 text-white'
-                    : 'bg-gray-800 text-gray-500 hover:text-white'
+                  periodFilter === value ? 'bg-gray-600 text-white' : 'bg-gray-800 text-gray-500 hover:text-white'
                 }`}>
                 {label}
               </button>
             ))}
           </div>
         </div>
-
         <div className="relative">
           <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 text-sm">🔍</span>
           <input type="search" placeholder="로케이션, 파렛트 코드, 상품명 검색..."
@@ -136,18 +562,17 @@ export default function WorkOrdersPage() {
                        text-white text-sm placeholder-gray-500 focus:outline-none
                        focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500" />
         </div>
-
         {!loading && (
           <div className="flex items-center gap-4 text-xs text-gray-500">
             <span>총 <span className="text-white font-semibold">{filtered.length}</span>건</span>
-            <span className="text-green-400">입고 {inboundCount}건</span>
-            <span className="text-red-400">출고 {outboundCount}건</span>
-            <span className="ml-auto text-gray-600">행을 클릭하면 상세 조회 및 출력 가능</span>
+            <span className="text-green-400">입고 {filtered.filter(l => l.type === 'inbound').length}건</span>
+            <span className="text-red-400">출고 {filtered.filter(l => l.type === 'outbound').length}건</span>
+            <span className="ml-auto text-gray-600">행 클릭 → 상세 조회 및 출력</span>
           </div>
         )}
       </div>
 
-      {/* ── 목록 */}
+      {/* 테이블 */}
       <div className="wms-card p-0 overflow-hidden">
         {loading ? (
           <p className="text-center text-gray-500 py-12 animate-pulse">불러오는 중...</p>
@@ -168,36 +593,27 @@ export default function WorkOrdersPage() {
               </thead>
               <tbody className="divide-y divide-gray-800/80">
                 {filtered.map(log => (
-                  <tr key={log.uid}
-                    onClick={() => setSelected(log)}
-                    className="cursor-pointer transition-colors hover:bg-blue-600/10 hover:border-l-2 hover:border-blue-500">
-                    {/* 유형 */}
+                  <tr key={log.uid} onClick={() => setSelected(log)}
+                    className="cursor-pointer transition-colors hover:bg-blue-600/10">
                     <td className="px-5 py-4">
                       {log.type === 'inbound' ? (
-                        <span className="inline-flex items-center gap-1 text-xs font-bold px-2.5 py-1 rounded-full
-                                         bg-green-900/40 text-green-400 border border-green-800">📥 입고</span>
+                        <span className="inline-flex items-center gap-1 text-xs font-bold px-2.5 py-1 rounded-full bg-green-900/40 text-green-400 border border-green-800">📥 입고</span>
                       ) : (
-                        <span className="inline-flex items-center gap-1 text-xs font-bold px-2.5 py-1 rounded-full
-                                         bg-red-900/40 text-red-400 border border-red-800">🚛 출고</span>
+                        <span className="inline-flex items-center gap-1 text-xs font-bold px-2.5 py-1 rounded-full bg-red-900/40 text-red-400 border border-red-800">🚛 출고</span>
                       )}
                     </td>
-                    {/* 로케이션 */}
                     <td className="px-5 py-4">
-                      <span className="inline-block bg-blue-600/20 border border-blue-500/30
-                                       text-blue-300 font-mono font-bold text-xs px-3 py-1 rounded-lg">
+                      <span className="inline-block bg-blue-600/20 border border-blue-500/30 text-blue-300 font-mono font-bold text-xs px-3 py-1 rounded-lg">
                         {log.locationCode}
                       </span>
                       {log.zoneCode && <span className="text-xs text-gray-600 ml-2">{log.zoneCode}구역</span>}
                     </td>
-                    {/* 슬롯 */}
                     <td className="px-5 py-4">
                       <span className="text-xs text-gray-300 font-mono bg-gray-800 px-2 py-1 rounded-lg">
                         {log.tier}단 {SIDE_KO[log.side] ?? log.side}
                       </span>
                     </td>
-                    {/* 파렛트 */}
                     <td className="px-5 py-4 font-mono text-xs text-gray-400">{log.palletCode}</td>
-                    {/* 상품 */}
                     <td className="px-5 py-4">
                       {log.products.length === 0 ? (
                         <span className="text-gray-600 text-xs">정보 없음</span>
@@ -209,20 +625,15 @@ export default function WorkOrdersPage() {
                               <span className="text-gray-500 text-xs">{p.qty.toLocaleString()} {p.unit}</span>
                             </div>
                           ))}
-                          {log.products.length > 2 && (
-                            <span className="text-xs text-blue-400">+{log.products.length - 2}개 (혼적)</span>
-                          )}
+                          {log.products.length > 2 && <span className="text-xs text-blue-400">+{log.products.length - 2}개 (혼적)</span>}
                         </div>
                       )}
                     </td>
-                    {/* 일시 */}
                     <td className="px-5 py-4 text-right text-xs text-gray-500 whitespace-nowrap">
                       <div className="text-gray-400">
                         {new Date(log.createdAt).toLocaleDateString('ko-KR', { month: '2-digit', day: '2-digit' })}
                       </div>
-                      <div>
-                        {new Date(log.createdAt).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })}
-                      </div>
+                      <div>{new Date(log.createdAt).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })}</div>
                     </td>
                   </tr>
                 ))}
@@ -232,10 +643,7 @@ export default function WorkOrdersPage() {
         )}
       </div>
 
-      {/* ── 상세 팝업 */}
-      {selected && (
-        <WorkOrderDetailModal log={selected} onClose={() => setSelected(null)} />
-      )}
+      {selected && <WorkOrderDetailModal log={selected} onClose={() => setSelected(null)} />}
     </div>
   )
 }
@@ -269,7 +677,7 @@ function WorkOrderDetailModal({ log, onClose }) {
     document.body.classList.remove('printing-label')
   }
 
-  const dt = new Date(log.createdAt)
+  const dt         = new Date(log.createdAt)
   const typeLabel  = log.type === 'inbound' ? '입고' : '출고'
   const typeEmoji  = log.type === 'inbound' ? '📥' : '🚛'
   const totalQty   = log.products.reduce((s, p) => s + p.qty, 0)
@@ -280,7 +688,6 @@ function WorkOrderDetailModal({ log, onClose }) {
       <div className="w-full max-w-lg shadow-2xl rounded-2xl overflow-hidden flex flex-col max-h-[90vh]"
         onClick={e => e.stopPropagation()}>
 
-        {/* 모달 헤더 — 화면에서만 보임 */}
         <div className="no-print bg-gray-900 border-b border-gray-700 px-5 py-4 flex items-center justify-between shrink-0">
           <div className="flex items-center gap-2">
             <span className="text-lg">{typeEmoji}</span>
@@ -288,25 +695,19 @@ function WorkOrderDetailModal({ log, onClose }) {
           </div>
           <div className="flex items-center gap-2">
             <button onClick={handlePrint}
-              className="flex items-center gap-2 px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-500
-                         text-white text-sm font-bold transition-colors">
+              className="flex items-center gap-2 px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-sm font-bold transition-colors">
               🖨️ 출력
             </button>
-            <button onClick={onClose}
-              className="text-gray-400 hover:text-white text-2xl leading-none ml-2">✕</button>
+            <button onClick={onClose} className="text-gray-400 hover:text-white text-2xl leading-none ml-2">✕</button>
           </div>
         </div>
 
-        {/* 출력 영역 */}
         <div className="label-print-area overflow-y-auto bg-white text-black flex-1">
-          {/* 문서 헤더 */}
           <div className="px-6 pt-6 pb-4 border-b-2 border-black">
             <div className="flex items-start justify-between">
               <div>
                 <p className="text-[10px] text-gray-500 tracking-widest uppercase">Palette Rack WMS</p>
-                <h1 className="text-2xl font-black tracking-tight mt-0.5">
-                  {typeEmoji} {typeLabel} 작업지시서
-                </h1>
+                <h1 className="text-2xl font-black tracking-tight mt-0.5">{typeEmoji} {typeLabel} 작업지시서</h1>
               </div>
               <div className="text-right text-xs text-gray-500 space-y-0.5">
                 <p className="font-bold text-gray-800 text-sm">
@@ -317,7 +718,6 @@ function WorkOrderDetailModal({ log, onClose }) {
             </div>
           </div>
 
-          {/* 로케이션 정보 */}
           <div className="px-6 py-4 grid grid-cols-3 gap-4 border-b border-gray-200">
             <InfoCell label="구역" value={log.zoneCode ? `${log.zoneCode} ${log.zoneName}`.trim() : '—'} />
             <InfoCell label="로케이션" value={log.locationCode} large />
@@ -325,17 +725,13 @@ function WorkOrderDetailModal({ log, onClose }) {
               value={log.tier && log.side ? `${log.tier}단 ${SIDE_KO[log.side] ?? log.side}(${log.side})` : '—'} />
           </div>
 
-          {/* 바코드 */}
           <div className="px-6 py-4 border-b border-gray-200 flex flex-col items-center">
             <p className="text-[10px] text-gray-400 tracking-widest uppercase mb-2">Pallet Code</p>
-            {log.palletCode && log.palletCode !== '—' ? (
-              <svg ref={barcodeRef} className="max-w-full" />
-            ) : (
-              <p className="text-gray-400 text-sm">바코드 없음</p>
-            )}
+            {log.palletCode && log.palletCode !== '—'
+              ? <svg ref={barcodeRef} className="max-w-full" />
+              : <p className="text-gray-400 text-sm">바코드 없음</p>}
           </div>
 
-          {/* 상품 목록 */}
           <div className="px-6 py-4">
             <p className="text-[10px] text-gray-400 tracking-widest uppercase mb-3">상품 내역</p>
             <table className="w-full text-sm border border-gray-200 rounded-lg overflow-hidden">
@@ -349,19 +745,15 @@ function WorkOrderDetailModal({ log, onClose }) {
               </thead>
               <tbody className="divide-y divide-gray-100">
                 {log.products.length === 0 ? (
-                  <tr>
-                    <td colSpan={4} className="px-3 py-3 text-center text-gray-400 text-xs">상품 정보 없음</td>
+                  <tr><td colSpan={4} className="px-3 py-3 text-center text-gray-400 text-xs">상품 정보 없음</td></tr>
+                ) : log.products.map((p, i) => (
+                  <tr key={i} className={i % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
+                    <td className="px-3 py-2.5 font-mono text-xs text-gray-500">{p.code}</td>
+                    <td className="px-3 py-2.5 font-medium text-gray-900">{p.name}</td>
+                    <td className="px-3 py-2.5 text-right font-bold text-gray-900">{p.qty.toLocaleString()}</td>
+                    <td className="px-3 py-2.5 text-right text-gray-500">{p.unit}</td>
                   </tr>
-                ) : (
-                  log.products.map((p, i) => (
-                    <tr key={i} className={i % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
-                      <td className="px-3 py-2.5 font-mono text-xs text-gray-500">{p.code}</td>
-                      <td className="px-3 py-2.5 font-medium text-gray-900">{p.name}</td>
-                      <td className="px-3 py-2.5 text-right font-bold text-gray-900">{p.qty.toLocaleString()}</td>
-                      <td className="px-3 py-2.5 text-right text-gray-500">{p.unit}</td>
-                    </tr>
-                  ))
-                )}
+                ))}
               </tbody>
               {log.products.length > 1 && (
                 <tfoot>
@@ -375,18 +767,13 @@ function WorkOrderDetailModal({ log, onClose }) {
             </table>
           </div>
 
-          {/* 서명란 */}
           <div className="px-6 pb-6 pt-2">
             <div className="grid grid-cols-3 gap-3 mt-2">
               {['담당자', '확인자', '입회자'].map(role => (
                 <div key={role} className="border border-gray-300 rounded-lg overflow-hidden">
-                  <div className="bg-gray-100 px-3 py-1.5 text-[10px] font-semibold text-gray-500 text-center">
-                    {role}
-                  </div>
+                  <div className="bg-gray-100 px-3 py-1.5 text-[10px] font-semibold text-gray-500 text-center">{role}</div>
                   <div className="h-14" />
-                  <div className="border-t border-gray-200 px-3 py-1 text-[10px] text-gray-400 text-center">
-                    (서명)
-                  </div>
+                  <div className="border-t border-gray-200 px-3 py-1 text-[10px] text-gray-400 text-center">(서명)</div>
                 </div>
               ))}
             </div>
@@ -396,7 +783,6 @@ function WorkOrderDetailModal({ log, onClose }) {
           </div>
         </div>
 
-        {/* 하단 버튼 — 화면에서만 보임 */}
         <div className="no-print bg-gray-900 border-t border-gray-700 px-5 py-3 flex justify-end gap-2 shrink-0">
           <button onClick={handlePrint}
             className="px-6 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-sm transition-colors">
