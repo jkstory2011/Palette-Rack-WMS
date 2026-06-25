@@ -226,9 +226,9 @@ function OrdersTab() {
                   {/* 유형 뱃지 */}
                   <div className="shrink-0 pt-0.5">
                     {order.type === 'inbound' ? (
-                      <span className="text-xs font-bold px-2 py-1 rounded-full bg-green-900/40 text-green-400 border border-green-800">📥 입고</span>
+                      <span className="whitespace-nowrap text-xs font-bold px-2 py-1 rounded-full bg-green-900/40 text-green-400 border border-green-800">📥 입고</span>
                     ) : (
-                      <span className="text-xs font-bold px-2 py-1 rounded-full bg-red-900/40 text-red-400 border border-red-800">🚛 출고</span>
+                      <span className="whitespace-nowrap text-xs font-bold px-2 py-1 rounded-full bg-red-900/40 text-red-400 border border-red-800">🚛 출고</span>
                     )}
                   </div>
 
@@ -583,7 +583,7 @@ function LogsTab() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="text-left text-xs text-gray-500 border-b border-gray-700 bg-gray-900/60">
-                  <th className="px-5 py-3 font-medium w-24">유형</th>
+                  <th className="px-5 py-3 font-medium w-28">유형</th>
                   <th className="px-5 py-3 font-medium">로케이션</th>
                   <th className="px-5 py-3 font-medium">슬롯</th>
                   <th className="px-5 py-3 font-medium">파렛트</th>
@@ -597,9 +597,9 @@ function LogsTab() {
                     className="cursor-pointer transition-colors hover:bg-blue-600/10">
                     <td className="px-5 py-4">
                       {log.type === 'inbound' ? (
-                        <span className="inline-flex items-center gap-1 text-xs font-bold px-2.5 py-1 rounded-full bg-green-900/40 text-green-400 border border-green-800">📥 입고</span>
+                        <span className="whitespace-nowrap inline-flex items-center gap-1 text-xs font-bold px-2.5 py-1 rounded-full bg-green-900/40 text-green-400 border border-green-800">📥 입고</span>
                       ) : (
-                        <span className="inline-flex items-center gap-1 text-xs font-bold px-2.5 py-1 rounded-full bg-red-900/40 text-red-400 border border-red-800">🚛 출고</span>
+                        <span className="whitespace-nowrap inline-flex items-center gap-1 text-xs font-bold px-2.5 py-1 rounded-full bg-red-900/40 text-red-400 border border-red-800">🚛 출고</span>
                       )}
                     </td>
                     <td className="px-5 py-4">
