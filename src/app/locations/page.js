@@ -595,16 +595,21 @@ function PatternMode({ zoneId, existingCodes, existingSlots, onClose, onSuccess 
             <span className="text-green-400 font-semibold">✓ 신규 {newCount}개</span>
             {skipCount > 0 && <span className="text-yellow-400">⚠ 중복 건너뜀 {skipCount}개</span>}
           </div>
-          <div className="inline-grid gap-1 overflow-x-auto"
-            style={{ gridTemplateColumns: `repeat(${pCols}, minmax(52px, 1fr))` }}>
-            {generated.slice(0, pRows * pCols).map((r, i) => (
-              <div key={i} className={`h-9 rounded text-[9px] font-bold flex items-center justify-center
-                border truncate px-1 ${r.skip
-                  ? 'bg-yellow-900/20 border-yellow-700/40 text-yellow-600'
-                  : 'bg-blue-900/40 border-blue-700 text-blue-300'}`}>
-                {r.code}
-              </div>
-            ))}
+          <div className="w-full grid gap-1"
+            style={{ gridTemplateColumns: `repeat(${pCols}, minmax(0, 1fr))` }}>
+            {generated.slice(0, pRows * pCols).map((r, i) => {
+              const h   = pCols > 22 ? 'h-6' : pCols > 15 ? 'h-7' : 'h-9'
+              const txt = pCols > 22 ? 'text-[7px]' : pCols > 15 ? 'text-[8px]' : 'text-[9px]'
+              return (
+                <div key={i} title={r.code}
+                  className={`${h} ${txt} rounded font-bold flex items-center justify-center
+                    border truncate px-0.5 ${r.skip
+                      ? 'bg-yellow-900/20 border-yellow-700/40 text-yellow-600'
+                      : 'bg-blue-900/40 border-blue-700 text-blue-300'}`}>
+                  {r.code}
+                </div>
+              )
+            })}
           </div>
           {generated.length > pRows * pCols && (
             <p className="text-xs text-gray-600">+ {generated.length - pRows * pCols}개 더...</p>
