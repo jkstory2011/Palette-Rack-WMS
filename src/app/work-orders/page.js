@@ -25,13 +25,15 @@ const STATUS_META = {
 
 // 상태별 가능한 액션
 const ACTIONS_BY_STATUS = {
-  registered: ['hold', 'cancel', 'delete'],
-  instructed: ['rerequest', 'hold', 'cancel'],
-  on_hold:    ['rerequest', 'cancel', 'delete'],
-  cancelled:  ['delete'],
+  registered:  ['hold', 'cancel', 'delete'],
+  instructed:  ['start', 'rerequest', 'hold', 'cancel'],
+  in_progress: ['hold', 'cancel'],
+  on_hold:     ['start', 'rerequest', 'cancel', 'delete'],
+  cancelled:   ['delete'],
 }
 
 const ACTION_META = {
+  start:     { label: '작업시작', emoji: '▶',  btnCls: 'bg-green-700 hover:bg-green-600'  },
   rerequest: { label: '재요청',  emoji: '🔄', btnCls: 'bg-blue-700 hover:bg-blue-600'    },
   hold:      { label: '보류',   emoji: '⏸',  btnCls: 'bg-orange-700 hover:bg-orange-600' },
   cancel:    { label: '취소',   emoji: '🚫',  btnCls: 'bg-gray-700 hover:bg-gray-600'    },
@@ -124,6 +126,7 @@ function OrdersTab() {
       await supabase.from(table).delete().eq('id', order.id)
     } else {
       let newStatus = order.status
+      if (action === 'start')     newStatus = 'in_progress'
       if (action === 'hold')      newStatus = 'on_hold'
       if (action === 'cancel')    newStatus = 'cancelled'
       if (action === 'rerequest') {
@@ -145,7 +148,7 @@ function OrdersTab() {
     fetchOrders()
   }
 
-  const ACTIVE_STATUSES = ['registered', 'instructed', 'on_hold']
+  const ACTIVE_STATUSES = ['registered', 'instructed', 'in_progress', 'on_hold']
 
   const filtered = orders.filter(o => {
     if (typeFilter === 'inbound'  && o.type !== 'inbound')  return false
@@ -155,8 +158,9 @@ function OrdersTab() {
   })
 
   const counts = {
-    registered: orders.filter(o => o.status === 'registered').length,
+    registered:  orders.filter(o => o.status === 'registered').length,
     instructed:  orders.filter(o => o.status === 'instructed').length,
+    in_progress: orders.filter(o => o.status === 'in_progress').length,
     on_hold:     orders.filter(o => o.status === 'on_hold').length,
     cancelled:   orders.filter(o => o.status === 'cancelled').length,
   }
@@ -164,12 +168,13 @@ function OrdersTab() {
   return (
     <div className="space-y-4">
       {/* 현황 요약 */}
-      <div className="grid grid-cols-4 gap-3">
+      <div className="grid grid-cols-5 gap-3">
         {[
-          { key: 'registered', label: '등록',  color: 'text-blue-400'   },
-          { key: 'instructed', label: '지시',  color: 'text-yellow-400' },
-          { key: 'on_hold',    label: '보류',  color: 'text-orange-400' },
-          { key: 'cancelled',  label: '취소',  color: 'text-gray-400'   },
+          { key: 'registered',  label: '등록',   color: 'text-blue-400'   },
+          { key: 'instructed',  label: '지시',   color: 'text-yellow-400' },
+          { key: 'in_progress', label: '진행중', color: 'text-cyan-400'   },
+          { key: 'on_hold',     label: '보류',   color: 'text-orange-400' },
+          { key: 'cancelled',   label: '취소',   color: 'text-gray-400'   },
         ].map(({ key, label, color }) => (
           <div key={key} className="wms-card text-center py-3">
             <p className={`text-2xl font-black ${color}`}>{counts[key]}</p>
@@ -314,6 +319,7 @@ function ActionModal({ order, action, onClose, onConfirm }) {
   const meta = ACTION_META[action]
 
   const PRESET_REASONS = {
+    start:     [],
     rerequest: ['로케이션 재배정 필요', '상품 구성 변경', '일정 재조정', '작업자 요청'],
     hold:      ['작업자 부족', '창고 공간 부족', '화주사 요청', '상품 검수 필요', '장비 점검 중'],
     cancel:    ['화주사 오더 취소', '상품 미도착', '수량 불일치', '계약 변경'],
@@ -321,8 +327,9 @@ function ActionModal({ order, action, onClose, onConfirm }) {
   }
 
   const presets = PRESET_REASONS[action] ?? []
-  const isDelete = action === 'delete'
-  const requireReason = !isDelete  // 삭제 외에는 사유 권장
+  const isDelete  = action === 'delete'
+  const isStart   = action === 'start'
+  const requireReason = !isDelete && !isStart
 
   useEffect(() => {
     const handler = e => { if (e.key === 'Escape') onClose() }
@@ -342,6 +349,8 @@ function ActionModal({ order, action, onClose, onConfirm }) {
   // 위험 레벨별 색상
   const dangerCls = isDelete
     ? 'bg-red-700 hover:bg-red-600'
+    : isStart
+    ? 'bg-green-700 hover:bg-green-600'
     : action === 'cancel'
     ? 'bg-gray-700 hover:bg-gray-600'
     : action === 'hold'
@@ -397,41 +406,47 @@ function ActionModal({ order, action, onClose, onConfirm }) {
               ⚠️ 삭제된 오더는 복구할 수 없습니다.
             </p>
           )}
-        </div>
-
-        {/* 사유 입력 */}
-        <div className="px-6 py-5 space-y-3">
-          <label className="text-xs font-medium text-gray-400">
-            사유 {requireReason ? <span className="text-gray-600">(선택)</span> : <span className="text-gray-600">(선택)</span>}
-          </label>
-
-          {/* 빠른 선택 */}
-          {presets.length > 0 && (
-            <div className="flex flex-wrap gap-2">
-              {presets.map(p => (
-                <button key={p} type="button"
-                  onClick={() => setReason(p)}
-                  className={`text-xs px-3 py-1.5 rounded-full border transition-colors ${
-                    reason === p
-                      ? 'bg-blue-600 border-blue-600 text-white'
-                      : 'border-gray-600 text-gray-400 hover:border-gray-400 hover:text-gray-200'
-                  }`}>
-                  {p}
-                </button>
-              ))}
-            </div>
+          {isStart && (
+            <p className="mt-3 text-xs text-green-400 bg-green-900/20 border border-green-800/30 rounded-lg px-3 py-2">
+              ▶ 작업을 시작하면 오더 상태가 <strong>진행중</strong>으로 변경됩니다.
+            </p>
           )}
-
-          <textarea
-            ref={inputRef}
-            value={reason}
-            onChange={e => setReason(e.target.value)}
-            placeholder="직접 사유를 입력하거나 위에서 선택하세요..."
-            rows={3}
-            className="w-full bg-gray-800 border border-gray-600 rounded-xl px-4 py-3
-                       text-white text-sm placeholder-gray-600 resize-none
-                       focus:outline-none focus:ring-2 focus:ring-blue-500/50" />
         </div>
+
+        {/* 사유 입력 — 작업시작/삭제 제외 */}
+        {!isStart && (
+          <div className="px-6 py-5 space-y-3">
+            <label className="text-xs font-medium text-gray-400">사유 <span className="text-gray-600">(선택)</span></label>
+
+            {presets.length > 0 && (
+              <div className="flex flex-wrap gap-2">
+                {presets.map(p => (
+                  <button key={p} type="button"
+                    onClick={() => setReason(p)}
+                    className={`text-xs px-3 py-1.5 rounded-full border transition-colors ${
+                      reason === p
+                        ? 'bg-blue-600 border-blue-600 text-white'
+                        : 'border-gray-600 text-gray-400 hover:border-gray-400 hover:text-gray-200'
+                    }`}>
+                    {p}
+                  </button>
+                ))}
+              </div>
+            )}
+
+            {!isDelete && (
+              <textarea
+                ref={inputRef}
+                value={reason}
+                onChange={e => setReason(e.target.value)}
+                placeholder="직접 사유를 입력하거나 위에서 선택하세요..."
+                rows={3}
+                className="w-full bg-gray-800 border border-gray-600 rounded-xl px-4 py-3
+                           text-white text-sm placeholder-gray-600 resize-none
+                           focus:outline-none focus:ring-2 focus:ring-blue-500/50" />
+            )}
+          </div>
+        )}
 
         {/* 하단 버튼 */}
         <div className="px-6 pb-5 flex gap-2">
