@@ -451,9 +451,9 @@ function CompleteTab({ onDone }) {
         .select('pallet_id, ship_qty, location_snapshot, tier, side')
         .eq('order_id', order.id)
 
-      // 파렛트 상태 → outbound
+      // 파렛트 상태 → outbound, 슬롯 해제 (location_id=NULL 로 슬롯 재사용 가능)
       const { error: pErr } = await supabase
-        .from('pallets').update({ status: 'outbound' })
+        .from('pallets').update({ status: 'outbound', location_id: null, tier: null, side: null })
         .in('id', (palletRows ?? []).map(r => r.pallet_id))
       if (pErr) throw pErr
 
