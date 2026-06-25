@@ -1,6 +1,7 @@
 import './globals.css'
+import { cookies } from 'next/headers'
 import ErrorBoundary from '@/components/ErrorBoundary'
-import LogoutButton from '@/components/LogoutButton'
+import AuthButton from '@/components/LogoutButton'
 
 // 모든 페이지 동적 렌더링 강제 — 빌드 시 Supabase 프리렌더 오류 방지
 export const dynamic = 'force-dynamic'
@@ -11,6 +12,8 @@ export const metadata = {
 }
 
 export default function RootLayout({ children }) {
+  const isLoggedIn = cookies().get('wms_auth')?.value === '1'
+
   return (
     <html lang="ko">
       <body className="min-h-screen bg-gray-950">
@@ -37,7 +40,7 @@ export default function RootLayout({ children }) {
             <NavLink href="/locations">📍 로케이션</NavLink>
             <NavLink href="/logs">📜 이력</NavLink>
             <div className="w-px h-5 bg-gray-700 mx-1 hidden sm:block" />
-            <LogoutButton />
+            <AuthButton isLoggedIn={isLoggedIn} />
           </nav>
         </header>
 
