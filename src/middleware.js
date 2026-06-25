@@ -11,10 +11,11 @@ export async function middleware(request) {
     return NextResponse.next()
   }
 
-  // 개발관리자 쿠키 (기존 시스템)
-  const devAdmin  = request.cookies.get('wms_auth')?.value === '1'
+  // 개발 환경 전용 관리자 쿠키 (프로덕션에서는 무효)
+  const isDev    = process.env.NODE_ENV !== 'production'
+  const devAdmin = isDev && request.cookies.get('wms_auth')?.value === '1'
 
-  // 일반 사용자 JWT
+  // JWT 인증
   const userToken = request.cookies.get('wms_user')?.value
   const user      = userToken ? await verifyToken(userToken) : null
 
