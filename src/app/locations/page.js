@@ -487,9 +487,11 @@ function PalletLocationTab() {
               </Field>
             </div>
             {error && <p className="text-sm text-red-400">{error}</p>}
-            <button type="submit" disabled={saving} className={btnCls}>
-              {saving ? '등록 중...' : '+ 로케이션 추가'}
-            </button>
+            <div className="flex justify-end">
+              <button type="submit" disabled={saving} className={btnCls}>
+                {saving ? '등록 중...' : '+ 로케이션 추가'}
+              </button>
+            </div>
           </form>
 
           <div className="wms-card">
