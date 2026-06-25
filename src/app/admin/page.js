@@ -8,59 +8,110 @@ const ROLE_META = {
 }
 
 export default function AdminPage() {
-  const [users, setUsers]     = useState([])
-  const [loading, setLoading] = useState(true)
-  const [tab, setTab]         = useState('pending')  // 'pending' | 'all'
-  const [resetPw, setResetPw] = useState({})         // { [id]: pw }
+  const [users, setUsers]       = useState([])
+  const [loading, setLoading]   = useState(true)
+  const [tab, setTab]           = useState('pending')
+  const [resetPw, setResetPw]   = useState({})
+  const [busy, setBusy]         = useState({})    // { [id]: true } 버튼 로딩
+  const [toast, setToast]       = useState(null)  // { msg, type }
+
+  function showToast(msg, type = 'success') {
+    setToast({ msg, type })
+    setTimeout(() => setToast(null), 3000)
+  }
 
   async function fetchUsers() {
     setLoading(true)
-    const res  = await fetch('/api/admin/users')
-    const data = await res.json()
-    setUsers(Array.isArray(data) ? data : [])
-    setLoading(false)
+    try {
+      const res  = await fetch('/api/admin/users')
+      const data = await res.json()
+      setUsers(Array.isArray(data) ? data : [])
+    } catch {
+      showToast('목록을 불러오지 못했습니다.', 'error')
+    } finally {
+      setLoading(false)
+    }
   }
 
   useEffect(() => { fetchUsers() }, [])
 
   async function patch(id, body) {
-    await fetch(`/api/admin/users/${id}`, {
+    const res  = await fetch(`/api/admin/users/${id}`, {
       method:  'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body:    JSON.stringify(body),
     })
-    fetchUsers()
+    const data = await res.json()
+    if (!res.ok) throw new Error(data.error || `오류 (${res.status})`)
+    await fetchUsers()
   }
 
   async function approve(user) {
-    await patch(user.id, {
-      is_approved: true,
-      approved_at: new Date().toISOString(),
-      approved_by: '관리자',
-    })
+    setBusy(b => ({ ...b, [user.id]: true }))
+    try {
+      await patch(user.id, {
+        is_approved: true,
+        approved_at: new Date().toISOString(),
+        approved_by: '관리자',
+      })
+      showToast(`${user.display_name} 계정을 승인했습니다.`)
+    } catch (e) {
+      showToast(e.message, 'error')
+    } finally {
+      setBusy(b => ({ ...b, [user.id]: false }))
+    }
   }
 
   async function reject(user) {
     if (!confirm(`${user.display_name}(${user.username}) 계정을 삭제할까요?`)) return
-    await fetch(`/api/admin/users/${user.id}`, { method: 'DELETE' })
-    fetchUsers()
+    setBusy(b => ({ ...b, [user.id]: true }))
+    try {
+      const res = await fetch(`/api/admin/users/${user.id}`, { method: 'DELETE' })
+      if (!res.ok) { const d = await res.json(); throw new Error(d.error) }
+      showToast(`${user.display_name} 계정을 삭제했습니다.`)
+      await fetchUsers()
+    } catch (e) {
+      showToast(e.message, 'error')
+    } finally {
+      setBusy(b => ({ ...b, [user.id]: false }))
+    }
   }
 
   async function toggleActive(user) {
-    await patch(user.id, { is_active: !user.is_active })
+    setBusy(b => ({ ...b, [user.id]: true }))
+    try {
+      await patch(user.id, { is_active: !user.is_active })
+      showToast(`${user.display_name} 계정을 ${!user.is_active ? '활성화' : '비활성화'}했습니다.`)
+    } catch (e) {
+      showToast(e.message, 'error')
+    } finally {
+      setBusy(b => ({ ...b, [user.id]: false }))
+    }
   }
 
   async function changeRole(user, role) {
-    await patch(user.id, { role })
+    try {
+      await patch(user.id, { role })
+      showToast(`${user.display_name} 권한을 변경했습니다.`)
+    } catch (e) {
+      showToast(e.message, 'error')
+    }
   }
 
   async function handleResetPw(user) {
     const pw = resetPw[user.id]?.trim()
-    if (!pw || pw.length < 6) { alert('6자 이상 입력하세요.'); return }
+    if (!pw || pw.length < 6) { showToast('6자 이상 입력하세요.', 'error'); return }
     if (!confirm(`${user.display_name}의 비밀번호를 재설정할까요?`)) return
-    await patch(user.id, { new_password: pw })
-    setResetPw(p => ({ ...p, [user.id]: '' }))
-    alert('비밀번호가 재설정되었습니다.')
+    setBusy(b => ({ ...b, [user.id + '_pw']: true }))
+    try {
+      await patch(user.id, { new_password: pw })
+      setResetPw(p => ({ ...p, [user.id]: '' }))
+      showToast('비밀번호를 재설정했습니다.')
+    } catch (e) {
+      showToast(e.message, 'error')
+    } finally {
+      setBusy(b => ({ ...b, [user.id + '_pw']: false }))
+    }
   }
 
   const pending  = users.filter(u => !u.is_approved)
@@ -70,6 +121,16 @@ export default function AdminPage() {
   return (
     <div className="max-w-5xl mx-auto space-y-6">
       <h1 className="text-2xl font-bold text-white">⚙ 관리 페이지</h1>
+
+      {/* 토스트 */}
+      {toast && (
+        <div className={`fixed top-5 right-5 z-50 px-5 py-3 rounded-xl shadow-lg text-sm font-semibold
+          transition-all ${toast.type === 'error'
+            ? 'bg-red-900 border border-red-700 text-red-200'
+            : 'bg-green-900 border border-green-700 text-green-200'}`}>
+          {toast.type === 'error' ? '❌ ' : '✅ '}{toast.msg}
+        </div>
+      )}
 
       {/* 현황 카드 */}
       <div className="grid grid-cols-3 gap-3">
@@ -123,12 +184,12 @@ export default function AdminPage() {
                 </p>
               </div>
               <div className="flex gap-2 shrink-0">
-                <button onClick={() => approve(u)}
-                  className="px-4 py-2 rounded-xl bg-green-700 hover:bg-green-600 text-white text-sm font-bold transition-colors">
-                  ✅ 승인
+                <button onClick={() => approve(u)} disabled={busy[u.id]}
+                  className="px-4 py-2 rounded-xl bg-green-700 hover:bg-green-600 text-white text-sm font-bold transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
+                  {busy[u.id] ? '처리 중...' : '✅ 승인'}
                 </button>
-                <button onClick={() => reject(u)}
-                  className="px-4 py-2 rounded-xl bg-red-800 hover:bg-red-700 text-white text-sm font-bold transition-colors">
+                <button onClick={() => reject(u)} disabled={busy[u.id]}
+                  className="px-4 py-2 rounded-xl bg-red-800 hover:bg-red-700 text-white text-sm font-bold transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
                   🗑 거부
                 </button>
               </div>
