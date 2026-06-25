@@ -1,8 +1,11 @@
 import { NextResponse } from 'next/server'
-import { supabaseAdmin } from '@/lib/supabase-server'
+import { getSupabaseAdmin } from '@/lib/supabase-server'
+
+export const dynamic = 'force-dynamic'
 
 export async function GET() {
-  const { data, error } = await supabaseAdmin
+  const db = getSupabaseAdmin()
+  const { data, error } = await db
     .from('wms_users')
     .select('id, username, display_name, role, is_active, is_approved, created_at, last_login_at, approved_at, approved_by')
     .order('created_at', { ascending: false })

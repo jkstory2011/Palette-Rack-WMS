@@ -1,7 +1,9 @@
 import { NextResponse } from 'next/server'
 import bcrypt from 'bcryptjs'
-import { supabaseAdmin } from '@/lib/supabase-server'
+import { getSupabaseAdmin } from '@/lib/supabase-server'
 import { signToken } from '@/lib/auth'
+
+export const dynamic = 'force-dynamic'
 
 export async function POST(req) {
   const { username, password } = await req.json()
@@ -10,7 +12,8 @@ export async function POST(req) {
     return NextResponse.json({ error: '아이디와 비밀번호를 입력하세요.' }, { status: 400 })
   }
 
-  const { data: user, error: fetchErr } = await supabaseAdmin
+  const db = getSupabaseAdmin()
+  const { data: user, error: fetchErr } = await db
     .from('wms_users')
     .select('*')
     .eq('username', username.trim().toLowerCase())
@@ -31,10 +34,7 @@ export async function POST(req) {
     return NextResponse.json({ error: '아이디 또는 비밀번호가 올바르지 않습니다.' }, { status: 401 })
   }
 
-  await supabaseAdmin
-    .from('wms_users')
-    .update({ last_login_at: new Date().toISOString() })
-    .eq('id', user.id)
+  await db.from('wms_users').update({ last_login_at: new Date().toISOString() }).eq('id', user.id)
 
   const token = await signToken({
     sub:         user.id,

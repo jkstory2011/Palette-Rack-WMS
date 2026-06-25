@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server'
 import bcrypt from 'bcryptjs'
-import { supabaseAdmin } from '@/lib/supabase-server'
+import { getSupabaseAdmin } from '@/lib/supabase-server'
+
+export const dynamic = 'force-dynamic'
 
 export async function POST(req) {
   const { username, displayName, password } = await req.json()
@@ -16,8 +18,9 @@ export async function POST(req) {
   }
 
   const hash = await bcrypt.hash(password, 10)
+  const db   = getSupabaseAdmin()
 
-  const { error } = await supabaseAdmin.from('wms_users').insert({
+  const { error } = await db.from('wms_users').insert({
     username:      username.trim().toLowerCase(),
     display_name:  displayName.trim(),
     password_hash: hash,
