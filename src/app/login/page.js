@@ -1,10 +1,8 @@
 'use client'
 
 import { useState } from 'react'
-import { useRouter } from 'next/navigation'
 
 export default function LoginPage() {
-  const router   = useRouter()
   const [pw, setPw]         = useState('')
   const [error, setError]   = useState('')
   const [loading, setLoading] = useState(false)
@@ -21,8 +19,8 @@ export default function LoginPage() {
     })
 
     if (res.ok) {
-      router.push('/')
-      router.refresh()
+      // 쿠키 설정 후 풀 페이지 리로드 — 미들웨어가 쿠키를 확실히 인식하게 함
+      window.location.href = '/'
     } else {
       const data = await res.json()
       setError(data.error || '비밀번호가 틀렸습니다.')
