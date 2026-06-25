@@ -417,21 +417,38 @@ function PalletLocationTab() {
         <>
           {locations.length > 0 && (
             <div className="wms-card overflow-x-auto">
-              <p className="text-xs text-gray-500 mb-3">현재 격자 구성 ({locations.length}개 로케이션)</p>
+              <div className="flex items-center justify-between mb-3">
+                <p className="text-xs text-gray-500">현재 격자 구성 ({locations.length}개 로케이션)</p>
+                <div className="flex items-center gap-3 text-[10px] text-gray-500">
+                  <span className="flex items-center gap-1"><span className="w-3 h-3 rounded bg-blue-900/40 border border-blue-700 inline-block" /> 공 (0개)</span>
+                  <span className="flex items-center gap-1"><span className="w-3 h-3 rounded bg-amber-900/50 border border-amber-600 inline-block" /> 일부 적재</span>
+                  <span className="flex items-center gap-1"><span className="w-3 h-3 rounded bg-red-900/50 border border-red-600 inline-block" /> 만적 (8개)</span>
+                  <span className="flex items-center gap-1"><span className="w-3 h-3 rounded bg-gray-800 border border-gray-700 inline-block" /> 비활성</span>
+                </div>
+              </div>
               <div className="inline-grid gap-1.5"
                 style={{ gridTemplateColumns: `repeat(${maxX}, minmax(56px, 1fr))` }}>
                 {Array.from({ length: maxY }, (_, r) =>
                   Array.from({ length: maxX }, (_, c) => {
-                    const loc = locMap.get(`${c+1}-${r+1}`)
+                    const loc       = locMap.get(`${c+1}-${r+1}`)
+                    const pCount    = loc ? activePallets(loc) : 0
+                    const colorCls  = !loc
+                      ? 'border-dashed border-gray-700 text-gray-700'
+                      : !loc.is_active
+                        ? 'bg-gray-800 border-gray-700 text-gray-600'
+                        : pCount === 0
+                          ? 'bg-blue-900/40 border-blue-700 text-blue-300'
+                          : pCount >= 8
+                            ? 'bg-red-900/50 border-red-600 text-red-200'
+                            : 'bg-amber-900/50 border-amber-600 text-amber-200'
                     return (
                       <div key={`${c}-${r}`}
-                        className={`h-10 rounded-lg text-[10px] font-bold flex items-center justify-center
-                                    border transition-colors ${!loc
-                          ? 'border-dashed border-gray-700 text-gray-700'
-                          : loc.is_active
-                            ? 'bg-blue-900/40 border-blue-700 text-blue-300'
-                            : 'bg-gray-800 border-gray-700 text-gray-600'}`}>
-                        {loc ? loc.code : `${c+1},${r+1}`}
+                        className={`h-11 rounded-lg text-[9px] font-bold flex flex-col items-center
+                                    justify-center border transition-colors ${colorCls}`}>
+                        <span>{loc ? loc.code : `${c+1},${r+1}`}</span>
+                        {loc && pCount > 0 && (
+                          <span className="text-[8px] opacity-80 mt-0.5">{pCount}개</span>
+                        )}
                       </div>
                     )
                   })
