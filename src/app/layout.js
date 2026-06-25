@@ -26,50 +26,52 @@ export default async function RootLayout({ children }) {
   return (
     <html lang="ko">
       <body className="min-h-screen bg-gray-950">
-        {/* 상단 헤더 */}
-        <header className="no-print sticky top-0 z-40 flex items-center justify-between
-                           bg-gray-900 border-b border-gray-700 px-6 h-14">
-          <div className="flex items-center gap-3">
-            <span className="text-xl font-bold tracking-tight text-white">
-              📦 Palette Rack WMS
-            </span>
-            <span className="text-xs text-gray-500 hidden sm:block">
-              파렛트랙 입출고 관리 시스템
-            </span>
-          </div>
-
-          <nav className="flex items-center gap-1 flex-wrap">
-            <NavLink href="/">🗺 조감도</NavLink>
-            <NavLink href="/inbound">📥 입고</NavLink>
-            <NavLink href="/outbound">🚛 출고</NavLink>
-            <NavLink href="/production">🏭 B2B생산</NavLink>
-            <NavLink href="/work-orders">📝 작업지시서</NavLink>
-            <div className="w-px h-5 bg-gray-700 mx-1 hidden sm:block" />
-            <NavLink href="/products">📋 상품</NavLink>
-            <NavLink href="/locations">📍 로케이션</NavLink>
-            <NavLink href="/logs">📜 이력</NavLink>
-            {isAdmin && (
-              <>
-                <div className="w-px h-5 bg-gray-700 mx-1 hidden sm:block" />
-                <NavLink href="/admin">⚙ 관리</NavLink>
-              </>
-            )}
-            <div className="w-px h-5 bg-gray-700 mx-1 hidden sm:block" />
-            {displayName && (
-              <span className="hidden sm:flex items-center gap-1.5 px-2">
-                {position && (
-                  <span className="text-xs text-gray-500 bg-gray-800 border border-gray-700
-                                   px-2 py-0.5 rounded-full">{position}</span>
-                )}
-                <span className="text-xs text-gray-300 font-medium">{displayName}</span>
+        {/* 로그인 상태일 때만 헤더 표시 */}
+        {isLoggedIn && (
+          <header className="no-print sticky top-0 z-40 flex items-center justify-between
+                             bg-gray-900 border-b border-gray-700 px-6 h-14">
+            <div className="flex items-center gap-3">
+              <span className="text-xl font-bold tracking-tight text-white">
+                📦 Palette Rack WMS
               </span>
-            )}
-            <AuthButton isLoggedIn={isLoggedIn} />
-          </nav>
-        </header>
+              <span className="text-xs text-gray-500 hidden sm:block">
+                파렛트랙 입출고 관리 시스템
+              </span>
+            </div>
 
-        {/* 메인 컨텐츠 */}
-        <main className="p-4 sm:p-6">
+            <nav className="flex items-center gap-1 flex-wrap">
+              <NavLink href="/">🗺 조감도</NavLink>
+              <NavLink href="/inbound">📥 입고</NavLink>
+              <NavLink href="/outbound">🚛 출고</NavLink>
+              <NavLink href="/production">🏭 B2B생산</NavLink>
+              <NavLink href="/work-orders">📝 작업지시서</NavLink>
+              <div className="w-px h-5 bg-gray-700 mx-1 hidden sm:block" />
+              <NavLink href="/products">📋 상품</NavLink>
+              <NavLink href="/locations">📍 로케이션</NavLink>
+              <NavLink href="/logs">📜 이력</NavLink>
+              {isAdmin && (
+                <>
+                  <div className="w-px h-5 bg-gray-700 mx-1 hidden sm:block" />
+                  <NavLink href="/admin">⚙ 관리</NavLink>
+                </>
+              )}
+              <div className="w-px h-5 bg-gray-700 mx-1 hidden sm:block" />
+              {displayName && (
+                <span className="hidden sm:flex items-center gap-1.5 px-2">
+                  {position && (
+                    <span className="text-xs text-gray-500 bg-gray-800 border border-gray-700
+                                     px-2 py-0.5 rounded-full">{position}</span>
+                  )}
+                  <span className="text-xs text-gray-300 font-medium">{displayName}</span>
+                </span>
+              )}
+              <AuthButton isLoggedIn={isLoggedIn} />
+            </nav>
+          </header>
+        )}
+
+        {/* 로그인 시 여백, 비로그인(로그인/회원가입 페이지)은 패딩 없음 */}
+        <main className={isLoggedIn ? 'p-4 sm:p-6' : ''}>
           <ErrorBoundary>
             {children}
           </ErrorBoundary>
