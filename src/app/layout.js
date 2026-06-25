@@ -1,5 +1,6 @@
 import './globals.css'
 import ErrorBoundary from '@/components/ErrorBoundary'
+import LogoutButton from '@/components/LogoutButton'
 
 // 모든 페이지 동적 렌더링 강제 — 빌드 시 Supabase 프리렌더 오류 방지
 export const dynamic = 'force-dynamic'
@@ -35,6 +36,8 @@ export default function RootLayout({ children }) {
             <NavLink href="/products">📋 상품</NavLink>
             <NavLink href="/locations">📍 로케이션</NavLink>
             <NavLink href="/logs">📜 이력</NavLink>
+            <div className="w-px h-5 bg-gray-700 mx-1 hidden sm:block" />
+            <LogoutButton />
           </nav>
         </header>
 
