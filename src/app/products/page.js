@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, useCallback, useRef } from 'react'
+import { useEffect, useState, useCallback, useRef, useMemo } from 'react'
 import { supabase } from '@/lib/supabase'
 
 const EMPTY_FORM = {
@@ -20,6 +20,8 @@ export default function ProductsPage() {
   const [rackLocations, setRackLocations]     = useState([])
   const [loadingModal, setLoadingModal]       = useState(false)
   const [showExcelModal, setShowExcelModal]   = useState(false)
+  const [selectedIds, setSelectedIds]         = useState(new Set())
+  const allCheckRef = useRef(null)
 
   async function fetchProducts() {
     const { data } = await supabase
@@ -101,6 +103,24 @@ export default function ProductsPage() {
     if (!confirm('이 상품을 삭제하면 연결된 재고 데이터에 영향을 줄 수 있습니다. 계속할까요?')) return
     await supabase.from('products').delete().eq('id', id)
     fetchProducts()
+  }
+
+  useEffect(() => {
+    if (!allCheckRef.current) return
+    allCheckRef.current.indeterminate = selectedIds.size > 0 && selectedIds.size < filtered.length
+  })
+
+  function toggleSelect(id) {
+    setSelectedIds(prev => { const s = new Set(prev); s.has(id) ? s.delete(id) : s.add(id); return s })
+  }
+  function toggleAll() {
+    setSelectedIds(prev => prev.size === filtered.length ? new Set() : new Set(filtered.map(p => p.id)))
+  }
+  async function handleBulkDelete() {
+    const ids = [...selectedIds]
+    if (!confirm(`${ids.length}개 상품을 삭제할까요?\n연결된 재고 데이터에 영향을 줄 수 있습니다.`)) return
+    for (const id of ids) await supabase.from('products').delete().eq('id', id)
+    setSelectedIds(new Set()); fetchProducts()
   }
 
   // 화주사 + 검색어 필터
@@ -217,10 +237,26 @@ export default function ProductsPage() {
           ) : filtered.length === 0 ? (
             <p className="text-center text-gray-600 py-8">등록된 상품이 없습니다.</p>
           ) : (
+            <>
+              {selectedIds.size > 0 && (
+                <div className="flex items-center justify-between bg-red-950/40 border border-red-700/40
+                                rounded-xl px-4 py-2 mb-3">
+                  <span className="text-sm text-red-300 font-semibold">{selectedIds.size}개 선택됨</span>
+                  <button onClick={handleBulkDelete}
+                    className="px-4 py-1.5 rounded-xl bg-red-700 hover:bg-red-600 text-white text-sm font-semibold transition-colors">
+                    🗑 선택 삭제
+                  </button>
+                </div>
+              )}
             <div className="overflow-x-auto">
               <table className="w-full text-sm min-w-[1100px]">
                 <thead>
                   <tr className="text-left text-xs text-gray-500 border-b border-gray-700">
+                    <th className="pb-2 w-8">
+                      <input type="checkbox" ref={allCheckRef}
+                        checked={filtered.length > 0 && selectedIds.size === filtered.length}
+                        onChange={toggleAll} className="w-4 h-4 accent-blue-500 cursor-pointer" />
+                    </th>
                     <th className="pb-2 font-medium pr-3 w-24">상품코드</th>
                     <th className="pb-2 font-medium pr-3">상품명</th>
                     <th className="pb-2 font-medium pr-3 w-28">화주사명</th>
@@ -244,7 +280,11 @@ export default function ProductsPage() {
 
                     return (
                       <tr key={p.id} onClick={() => openModal(p)}
-                        className="hover:bg-gray-800/60 transition-colors cursor-pointer">
+                        className={`hover:bg-gray-800/60 transition-colors cursor-pointer ${selectedIds.has(p.id) ? 'bg-blue-950/20' : ''}`}>
+                        <td className="py-3" onClick={e => e.stopPropagation()}>
+                          <input type="checkbox" checked={selectedIds.has(p.id)} onChange={() => toggleSelect(p.id)}
+                            className="w-4 h-4 accent-blue-500 cursor-pointer" />
+                        </td>
                         <td className="py-3 font-mono text-gray-300 pr-3 text-xs">{p.code}</td>
                         <td className="py-3 pr-3">
                           <span className="text-white font-medium">{p.name}</span>
@@ -305,6 +345,7 @@ export default function ProductsPage() {
                 </tbody>
               </table>
             </div>
+            </>
           )}
         </div>
       </div>

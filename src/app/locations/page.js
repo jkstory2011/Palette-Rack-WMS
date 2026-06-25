@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, useCallback, useMemo } from 'react'
+import { useEffect, useState, useCallback, useMemo, useRef } from 'react'
 import { supabase } from '@/lib/supabase'
 
 const TABS = { ZONE: 'zone', PALLET: 'pallet', PRODUCT: 'product' }
@@ -48,6 +48,32 @@ function ZoneTab() {
   const [showBulk, setShowBulk]     = useState(false)
   const [editingId, setEditingId]   = useState(null)
   const [editForm, setEditForm]     = useState({ code: '', name: '' })
+  const [selectedIds, setSelectedIds] = useState(new Set())
+  const allCheckRef = useRef(null)
+
+  useEffect(() => {
+    if (!allCheckRef.current) return
+    allCheckRef.current.indeterminate = selectedIds.size > 0 && selectedIds.size < zones.length
+  }, [selectedIds, zones.length])
+
+  function toggleSelect(id) {
+    setSelectedIds(prev => { const s = new Set(prev); s.has(id) ? s.delete(id) : s.add(id); return s })
+  }
+  function toggleAll() {
+    setSelectedIds(prev => prev.size === zones.length ? new Set() : new Set(zones.map(z => z.id)))
+  }
+  async function handleBulkDelete() {
+    const ids = [...selectedIds]
+    const withLocs  = zones.filter(z => ids.includes(z.id) && (z.locations?.length ?? 0) > 0)
+    const canDelete = zones.filter(z => ids.includes(z.id) && !(z.locations?.length > 0))
+    if (canDelete.length === 0)
+      return alert(`선택한 구역 모두 로케이션이 있어 삭제할 수 없습니다.\n먼저 로케이션을 삭제해주세요.`)
+    let msg = `${canDelete.length}개 구역을 삭제할까요?`
+    if (withLocs.length > 0) msg += `\n\n⚠ ${withLocs.map(z => z.code).join(', ')}은 로케이션이 있어 제외됩니다.`
+    if (!confirm(msg)) return
+    for (const z of canDelete) await supabase.from('zones').delete().eq('id', z.id)
+    setSelectedIds(new Set()); fetchZones()
+  }
 
   const fetchZones = useCallback(async () => {
     const { data } = await supabase.from('zones')
@@ -122,51 +148,74 @@ function ZoneTab() {
         {zones.length === 0 ? (
           <p className="text-gray-600 text-sm text-center py-8">등록된 구역이 없습니다.</p>
         ) : (
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="text-xs text-gray-500 border-b border-gray-700 text-left">
-                <th className="pb-2">코드</th><th className="pb-2">이름</th>
-                <th className="pb-2 text-center">로케이션 수</th><th className="pb-2" />
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-800">
-              {zones.map(z => editingId === z.id ? (
-                <tr key={z.id} className="bg-blue-950/30">
-                  <td className="py-2 pr-2">
-                    <input value={editForm.code}
-                      onChange={e => setEditForm(f => ({ ...f, code: e.target.value }))}
-                      className={`${inputCls} py-1.5 text-sm font-bold w-24`}
-                      autoFocus onKeyDown={e => e.key === 'Enter' && handleEditSave(z)} />
-                  </td>
-                  <td className="py-2 pr-2">
-                    <input value={editForm.name}
-                      onChange={e => setEditForm(f => ({ ...f, name: e.target.value }))}
-                      className={`${inputCls} py-1.5 text-sm w-full`}
-                      onKeyDown={e => e.key === 'Enter' && handleEditSave(z)} />
-                  </td>
-                  <td className="py-2 text-center text-gray-400">{z.locations?.length ?? 0}개</td>
-                  <td className="py-2 text-right whitespace-nowrap">
-                    <button onClick={() => handleEditSave(z)}
-                      className="text-xs text-blue-400 hover:text-blue-300 font-semibold px-2 py-1">저장</button>
-                    <button onClick={() => setEditingId(null)}
-                      className="text-xs text-gray-600 hover:text-gray-400 px-2 py-1">취소</button>
-                  </td>
+          <>
+            {selectedIds.size > 0 && (
+              <div className="flex items-center justify-between bg-red-950/40 border border-red-700/40
+                              rounded-xl px-4 py-2 mb-3">
+                <span className="text-sm text-red-300 font-semibold">{selectedIds.size}개 선택됨</span>
+                <button onClick={handleBulkDelete}
+                  className="px-4 py-1.5 rounded-xl bg-red-700 hover:bg-red-600 text-white text-sm font-semibold transition-colors">
+                  🗑 선택 삭제
+                </button>
+              </div>
+            )}
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="text-xs text-gray-500 border-b border-gray-700 text-left">
+                  <th className="pb-2 w-8">
+                    <input type="checkbox" ref={allCheckRef}
+                      checked={zones.length > 0 && selectedIds.size === zones.length}
+                      onChange={toggleAll} className="w-4 h-4 accent-blue-500 cursor-pointer" />
+                  </th>
+                  <th className="pb-2">코드</th><th className="pb-2">이름</th>
+                  <th className="pb-2 text-center">로케이션 수</th><th className="pb-2" />
                 </tr>
-              ) : (
-                <tr key={z.id} className="hover:bg-gray-800/40 transition-colors group">
-                  <td className="py-3 font-bold text-white text-lg">{z.code}</td>
-                  <td className="py-3 text-gray-300">{z.name}</td>
-                  <td className="py-3 text-center text-gray-400">{z.locations?.length ?? 0}개</td>
-                  <td className="py-3 text-right whitespace-nowrap">
-                    <button onClick={() => startEdit(z)}
-                      className="text-xs text-gray-600 hover:text-blue-400 transition-colors px-2 py-1 opacity-0 group-hover:opacity-100">수정</button>
-                    <button onClick={() => handleDelete(z)}
-                      className="text-xs text-gray-600 hover:text-red-400 transition-colors px-2 py-1 opacity-0 group-hover:opacity-100">삭제</button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody className="divide-y divide-gray-800">
+                {zones.map(z => editingId === z.id ? (
+                  <tr key={z.id} className="bg-blue-950/30">
+                    <td className="py-2" />
+                    <td className="py-2 pr-2">
+                      <input value={editForm.code}
+                        onChange={e => setEditForm(f => ({ ...f, code: e.target.value }))}
+                        className={`${inputCls} py-1.5 text-sm font-bold w-24`}
+                        autoFocus onKeyDown={e => e.key === 'Enter' && handleEditSave(z)} />
+                    </td>
+                    <td className="py-2 pr-2">
+                      <input value={editForm.name}
+                        onChange={e => setEditForm(f => ({ ...f, name: e.target.value }))}
+                        className={`${inputCls} py-1.5 text-sm w-full`}
+                        onKeyDown={e => e.key === 'Enter' && handleEditSave(z)} />
+                    </td>
+                    <td className="py-2 text-center text-gray-400">{z.locations?.length ?? 0}개</td>
+                    <td className="py-2 text-right whitespace-nowrap">
+                      <button onClick={() => handleEditSave(z)}
+                        className="text-xs text-blue-400 hover:text-blue-300 font-semibold px-2 py-1">저장</button>
+                      <button onClick={() => setEditingId(null)}
+                        className="text-xs text-gray-600 hover:text-gray-400 px-2 py-1">취소</button>
+                    </td>
+                  </tr>
+                ) : (
+                  <tr key={z.id}
+                    className={`hover:bg-gray-800/40 transition-colors group ${selectedIds.has(z.id) ? 'bg-blue-950/20' : ''}`}>
+                    <td className="py-3" onClick={e => e.stopPropagation()}>
+                      <input type="checkbox" checked={selectedIds.has(z.id)} onChange={() => toggleSelect(z.id)}
+                        className="w-4 h-4 accent-blue-500 cursor-pointer" />
+                    </td>
+                    <td className="py-3 font-bold text-white text-lg">{z.code}</td>
+                    <td className="py-3 text-gray-300">{z.name}</td>
+                    <td className="py-3 text-center text-gray-400">{z.locations?.length ?? 0}개</td>
+                    <td className="py-3 text-right whitespace-nowrap">
+                      <button onClick={() => startEdit(z)}
+                        className="text-xs text-gray-600 hover:text-blue-400 transition-colors px-2 py-1 opacity-0 group-hover:opacity-100">수정</button>
+                      <button onClick={() => handleDelete(z)}
+                        className="text-xs text-gray-600 hover:text-red-400 transition-colors px-2 py-1 opacity-0 group-hover:opacity-100">삭제</button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </>
         )}
       </div>
 
@@ -252,15 +301,41 @@ function BulkZoneModal({ onClose, onSuccess }) {
 // 파렛트랙 로케이션 탭
 // ════════════════════════════════════════
 function PalletLocationTab() {
-  const [zones, setZones]         = useState([])
-  const [zoneId, setZoneId]       = useState('')
-  const [locations, setLocations] = useState([])
-  const [form, setForm]           = useState({ code: '', grid_x: '', grid_y: '', aisle: '' })
-  const [saving, setSaving]       = useState(false)
-  const [error, setError]         = useState('')
-  const [showBulk, setShowBulk]   = useState(false)
-  const [editingId, setEditingId] = useState(null)
-  const [editForm, setEditForm]   = useState({ code: '', grid_x: '', grid_y: '', aisle: '' })
+  const [zones, setZones]           = useState([])
+  const [zoneId, setZoneId]         = useState('')
+  const [locations, setLocations]   = useState([])
+  const [form, setForm]             = useState({ code: '', grid_x: '', grid_y: '', aisle: '' })
+  const [saving, setSaving]         = useState(false)
+  const [error, setError]           = useState('')
+  const [showBulk, setShowBulk]     = useState(false)
+  const [editingId, setEditingId]   = useState(null)
+  const [editForm, setEditForm]     = useState({ code: '', grid_x: '', grid_y: '', aisle: '' })
+  const [selectedIds, setSelectedIds] = useState(new Set())
+  const allCheckRef = useRef(null)
+
+  useEffect(() => {
+    if (!allCheckRef.current) return
+    allCheckRef.current.indeterminate = selectedIds.size > 0 && selectedIds.size < locations.length
+  }, [selectedIds, locations.length])
+
+  function toggleSelect(id) {
+    setSelectedIds(prev => { const s = new Set(prev); s.has(id) ? s.delete(id) : s.add(id); return s })
+  }
+  function toggleAll() {
+    setSelectedIds(prev => prev.size === locations.length ? new Set() : new Set(locations.map(l => l.id)))
+  }
+  async function handleBulkDelete() {
+    const ids = [...selectedIds]
+    const withPallets  = locations.filter(l => ids.includes(l.id) && (l.pallets?.length ?? 0) > 0)
+    const canDelete    = locations.filter(l => ids.includes(l.id) && !(l.pallets?.length > 0))
+    if (canDelete.length === 0)
+      return alert('선택한 로케이션 모두 파렛트가 있어 삭제할 수 없습니다.')
+    let msg = `${canDelete.length}개 로케이션을 삭제할까요?`
+    if (withPallets.length > 0) msg += `\n\n⚠ ${withPallets.map(l => l.code).join(', ')}은 파렛트가 있어 제외됩니다.`
+    if (!confirm(msg)) return
+    for (const l of canDelete) await supabase.from('locations').delete().eq('id', l.id)
+    setSelectedIds(new Set()); fetchLocations(zoneId)
+  }
 
   useEffect(() => {
     supabase.from('zones').select('id, code, name').order('code')
@@ -328,7 +403,7 @@ function PalletLocationTab() {
     <div className="space-y-5">
       <div className="wms-card">
         <label className="block text-xs font-medium text-gray-400 mb-2">구역 선택</label>
-        <select value={zoneId} onChange={e => { setZoneId(e.target.value); setEditingId(null) }} className={selectCls}>
+        <select value={zoneId} onChange={e => { setZoneId(e.target.value); setEditingId(null); setSelectedIds(new Set()) }} className={selectCls}>
           <option value="">구역을 선택하세요...</option>
           {zones.map(z => <option key={z.id} value={z.id}>{z.code} — {z.name}</option>)}
         </select>
@@ -403,80 +478,103 @@ function PalletLocationTab() {
             {locations.length === 0 ? (
               <p className="text-gray-600 text-sm text-center py-8">이 구역에 등록된 로케이션이 없습니다.</p>
             ) : (
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="text-xs text-gray-500 border-b border-gray-700 text-left">
-                    <th className="pb-2">코드</th><th className="pb-2 text-center">X(열)</th>
-                    <th className="pb-2 text-center">Y(행)</th><th className="pb-2">통로</th>
-                    <th className="pb-2 text-center">파렛트</th><th className="pb-2 text-center">상태</th>
-                    <th className="pb-2" />
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-800">
-                  {locations.map(l => editingId === l.id ? (
-                    <tr key={l.id} className="bg-blue-950/30">
-                      <td className="py-1.5 pr-1">
-                        <input value={editForm.code}
-                          onChange={e => setEditForm(f => ({ ...f, code: e.target.value }))}
-                          className={`${inputCls} py-1 text-xs font-mono font-bold w-24`} autoFocus />
-                      </td>
-                      <td className="py-1.5 pr-1 text-center">
-                        <input type="number" min="1" value={editForm.grid_x}
-                          onChange={e => setEditForm(f => ({ ...f, grid_x: e.target.value }))}
-                          className={`${inputCls} py-1 text-xs text-center w-14`} />
-                      </td>
-                      <td className="py-1.5 pr-1 text-center">
-                        <input type="number" min="1" value={editForm.grid_y}
-                          onChange={e => setEditForm(f => ({ ...f, grid_y: e.target.value }))}
-                          className={`${inputCls} py-1 text-xs text-center w-14`} />
-                      </td>
-                      <td className="py-1.5 pr-1">
-                        <input value={editForm.aisle}
-                          onChange={e => setEditForm(f => ({ ...f, aisle: e.target.value }))}
-                          placeholder="통로" className={`${inputCls} py-1 text-xs w-24`}
-                          onKeyDown={e => e.key === 'Enter' && handleEditSave(l)} />
-                      </td>
-                      <td className="py-1.5 text-center text-gray-400">{l.pallets?.length ?? 0}</td>
-                      <td className="py-1.5 text-center">
-                        <button onClick={() => handleToggleActive(l)}
-                          className={`text-xs px-2 py-1 rounded-full font-semibold transition-colors ${
-                            l.is_active ? 'bg-green-900/40 text-green-400' : 'bg-gray-700 text-gray-500'}`}>
-                          {l.is_active ? '활성' : '비활성'}
-                        </button>
-                      </td>
-                      <td className="py-1.5 text-right whitespace-nowrap">
-                        <button onClick={() => handleEditSave(l)}
-                          className="text-xs text-blue-400 hover:text-blue-300 font-semibold px-2 py-1">저장</button>
-                        <button onClick={() => setEditingId(null)}
-                          className="text-xs text-gray-600 hover:text-gray-400 px-2 py-1">취소</button>
-                      </td>
+              <>
+                {selectedIds.size > 0 && (
+                  <div className="flex items-center justify-between bg-red-950/40 border border-red-700/40
+                                  rounded-xl px-4 py-2 mb-3">
+                    <span className="text-sm text-red-300 font-semibold">{selectedIds.size}개 선택됨</span>
+                    <button onClick={handleBulkDelete}
+                      className="px-4 py-1.5 rounded-xl bg-red-700 hover:bg-red-600 text-white text-sm font-semibold transition-colors">
+                      🗑 선택 삭제
+                    </button>
+                  </div>
+                )}
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="text-xs text-gray-500 border-b border-gray-700 text-left">
+                      <th className="pb-2 w-8">
+                        <input type="checkbox" ref={allCheckRef}
+                          checked={locations.length > 0 && selectedIds.size === locations.length}
+                          onChange={toggleAll} className="w-4 h-4 accent-blue-500 cursor-pointer" />
+                      </th>
+                      <th className="pb-2">코드</th><th className="pb-2 text-center">X(열)</th>
+                      <th className="pb-2 text-center">Y(행)</th><th className="pb-2">통로</th>
+                      <th className="pb-2 text-center">파렛트</th><th className="pb-2 text-center">상태</th>
+                      <th className="pb-2" />
                     </tr>
-                  ) : (
-                    <tr key={l.id} className="hover:bg-gray-800/40 transition-colors group">
-                      <td className="py-2.5 font-bold text-white font-mono">{l.code}</td>
-                      <td className="py-2.5 text-center text-gray-400">{l.grid_x}</td>
-                      <td className="py-2.5 text-center text-gray-400">{l.grid_y}</td>
-                      <td className="py-2.5 text-gray-500 text-xs">{l.aisle ?? '—'}</td>
-                      <td className="py-2.5 text-center text-gray-400">{l.pallets?.length ?? 0}</td>
-                      <td className="py-2.5 text-center">
-                        <button onClick={() => handleToggleActive(l)}
-                          className={`text-xs px-2 py-1 rounded-full font-semibold transition-colors ${
-                            l.is_active
-                              ? 'bg-green-900/40 text-green-400 hover:bg-green-900/60'
-                              : 'bg-gray-700 text-gray-500 hover:bg-gray-600'}`}>
-                          {l.is_active ? '활성' : '비활성'}
-                        </button>
-                      </td>
-                      <td className="py-2.5 text-right whitespace-nowrap">
-                        <button onClick={() => startEdit(l)}
-                          className="text-xs text-gray-600 hover:text-blue-400 transition-colors px-2 py-1 opacity-0 group-hover:opacity-100">수정</button>
-                        <button onClick={() => handleDelete(l)}
-                          className="text-xs text-gray-600 hover:text-red-400 transition-colors px-2 py-1 opacity-0 group-hover:opacity-100">삭제</button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody className="divide-y divide-gray-800">
+                    {locations.map(l => editingId === l.id ? (
+                      <tr key={l.id} className="bg-blue-950/30">
+                        <td className="py-1.5" />
+                        <td className="py-1.5 pr-1">
+                          <input value={editForm.code}
+                            onChange={e => setEditForm(f => ({ ...f, code: e.target.value }))}
+                            className={`${inputCls} py-1 text-xs font-mono font-bold w-24`} autoFocus />
+                        </td>
+                        <td className="py-1.5 pr-1 text-center">
+                          <input type="number" min="1" value={editForm.grid_x}
+                            onChange={e => setEditForm(f => ({ ...f, grid_x: e.target.value }))}
+                            className={`${inputCls} py-1 text-xs text-center w-14`} />
+                        </td>
+                        <td className="py-1.5 pr-1 text-center">
+                          <input type="number" min="1" value={editForm.grid_y}
+                            onChange={e => setEditForm(f => ({ ...f, grid_y: e.target.value }))}
+                            className={`${inputCls} py-1 text-xs text-center w-14`} />
+                        </td>
+                        <td className="py-1.5 pr-1">
+                          <input value={editForm.aisle}
+                            onChange={e => setEditForm(f => ({ ...f, aisle: e.target.value }))}
+                            placeholder="통로" className={`${inputCls} py-1 text-xs w-24`}
+                            onKeyDown={e => e.key === 'Enter' && handleEditSave(l)} />
+                        </td>
+                        <td className="py-1.5 text-center text-gray-400">{l.pallets?.length ?? 0}</td>
+                        <td className="py-1.5 text-center">
+                          <button onClick={() => handleToggleActive(l)}
+                            className={`text-xs px-2 py-1 rounded-full font-semibold transition-colors ${
+                              l.is_active ? 'bg-green-900/40 text-green-400' : 'bg-gray-700 text-gray-500'}`}>
+                            {l.is_active ? '활성' : '비활성'}
+                          </button>
+                        </td>
+                        <td className="py-1.5 text-right whitespace-nowrap">
+                          <button onClick={() => handleEditSave(l)}
+                            className="text-xs text-blue-400 hover:text-blue-300 font-semibold px-2 py-1">저장</button>
+                          <button onClick={() => setEditingId(null)}
+                            className="text-xs text-gray-600 hover:text-gray-400 px-2 py-1">취소</button>
+                        </td>
+                      </tr>
+                    ) : (
+                      <tr key={l.id}
+                        className={`hover:bg-gray-800/40 transition-colors group ${selectedIds.has(l.id) ? 'bg-blue-950/20' : ''}`}>
+                        <td className="py-2.5">
+                          <input type="checkbox" checked={selectedIds.has(l.id)} onChange={() => toggleSelect(l.id)}
+                            className="w-4 h-4 accent-blue-500 cursor-pointer" />
+                        </td>
+                        <td className="py-2.5 font-bold text-white font-mono">{l.code}</td>
+                        <td className="py-2.5 text-center text-gray-400">{l.grid_x}</td>
+                        <td className="py-2.5 text-center text-gray-400">{l.grid_y}</td>
+                        <td className="py-2.5 text-gray-500 text-xs">{l.aisle ?? '—'}</td>
+                        <td className="py-2.5 text-center text-gray-400">{l.pallets?.length ?? 0}</td>
+                        <td className="py-2.5 text-center">
+                          <button onClick={() => handleToggleActive(l)}
+                            className={`text-xs px-2 py-1 rounded-full font-semibold transition-colors ${
+                              l.is_active
+                                ? 'bg-green-900/40 text-green-400 hover:bg-green-900/60'
+                                : 'bg-gray-700 text-gray-500 hover:bg-gray-600'}`}>
+                            {l.is_active ? '활성' : '비활성'}
+                          </button>
+                        </td>
+                        <td className="py-2.5 text-right whitespace-nowrap">
+                          <button onClick={() => startEdit(l)}
+                            className="text-xs text-gray-600 hover:text-blue-400 transition-colors px-2 py-1 opacity-0 group-hover:opacity-100">수정</button>
+                          <button onClick={() => handleDelete(l)}
+                            className="text-xs text-gray-600 hover:text-red-400 transition-colors px-2 py-1 opacity-0 group-hover:opacity-100">삭제</button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </>
             )}
           </div>
         </>
@@ -702,15 +800,39 @@ function TextMode({ zoneId, existingCodes, onClose, onSuccess }) {
 // 상품 로케이션 탭
 // ════════════════════════════════════════
 function ProductLocationTab() {
-  const [locs, setLocs]             = useState([])
-  const [form, setForm]             = useState({ code: '', name: '', note: '' })
-  const [saving, setSaving]         = useState(false)
-  const [error, setError]           = useState('')
-  const [showBulk, setShowBulk]     = useState(false)
-  const [editingId, setEditingId]   = useState(null)
-  const [editForm, setEditForm]     = useState({ code: '', name: '', note: '' })
-  const [expandedId, setExpandedId] = useState(null)
-  const [products, setProducts]     = useState({})
+  const [locs, setLocs]               = useState([])
+  const [form, setForm]               = useState({ code: '', name: '', note: '' })
+  const [saving, setSaving]           = useState(false)
+  const [error, setError]             = useState('')
+  const [showBulk, setShowBulk]       = useState(false)
+  const [editingId, setEditingId]     = useState(null)
+  const [editForm, setEditForm]       = useState({ code: '', name: '', note: '' })
+  const [expandedId, setExpandedId]   = useState(null)
+  const [products, setProducts]       = useState({})
+  const [selectedIds, setSelectedIds] = useState(new Set())
+  const allCheckRef = useRef(null)
+
+  useEffect(() => {
+    if (!allCheckRef.current) return
+    allCheckRef.current.indeterminate = selectedIds.size > 0 && selectedIds.size < locs.length
+  }, [selectedIds, locs.length])
+
+  function toggleSelect(id) {
+    setSelectedIds(prev => { const s = new Set(prev); s.has(id) ? s.delete(id) : s.add(id); return s })
+  }
+  function toggleAll() {
+    setSelectedIds(prev => prev.size === locs.length ? new Set() : new Set(locs.map(l => l.id)))
+  }
+  async function handleBulkDelete() {
+    const ids = [...selectedIds]
+    const targets = locs.filter(l => ids.includes(l.id))
+    if (!confirm(`${targets.length}개 상품 로케이션을 삭제할까요?\n해당 로케이션이 지정된 상품의 관리 로케이션은 초기화됩니다.`)) return
+    for (const loc of targets) {
+      await supabase.from('products').update({ mgmt_location: null }).eq('mgmt_location', loc.code)
+      await supabase.from('product_locations').delete().eq('id', loc.id)
+    }
+    setSelectedIds(new Set()); fetchLocs()
+  }
 
   const fetchLocs = useCallback(async () => {
     const { data } = await supabase.from('product_locations')
@@ -806,9 +928,25 @@ function ProductLocationTab() {
         {locs.length === 0 ? (
           <p className="text-gray-600 text-sm text-center py-8">등록된 상품 로케이션이 없습니다.</p>
         ) : (
+          <>
+            {selectedIds.size > 0 && (
+              <div className="flex items-center justify-between bg-red-950/40 border border-red-700/40
+                              rounded-xl px-4 py-2 mb-3">
+                <span className="text-sm text-red-300 font-semibold">{selectedIds.size}개 선택됨</span>
+                <button onClick={handleBulkDelete}
+                  className="px-4 py-1.5 rounded-xl bg-red-700 hover:bg-red-600 text-white text-sm font-semibold transition-colors">
+                  🗑 선택 삭제
+                </button>
+              </div>
+            )}
           <table className="w-full text-sm">
             <thead>
               <tr className="text-xs text-gray-500 border-b border-gray-700 text-left">
+                <th className="pb-2 w-8">
+                  <input type="checkbox" ref={allCheckRef}
+                    checked={locs.length > 0 && selectedIds.size === locs.length}
+                    onChange={toggleAll} className="w-4 h-4 accent-blue-500 cursor-pointer" />
+                </th>
                 <th className="pb-2 w-8" />
                 <th className="pb-2">코드</th>
                 <th className="pb-2">이름</th>
@@ -823,7 +961,7 @@ function ProductLocationTab() {
                 return [
                   isEditing ? (
                     <tr key={`edit-${loc.id}`} className="bg-blue-950/30">
-                      <td />
+                      <td /><td />
                       <td className="py-2 pr-2">
                         <input value={editForm.code}
                           onChange={e => setEditForm(f => ({ ...f, code: e.target.value }))}
@@ -848,7 +986,12 @@ function ProductLocationTab() {
                       </td>
                     </tr>
                   ) : (
-                    <tr key={`row-${loc.id}`} className="hover:bg-gray-800/40 transition-colors group">
+                    <tr key={`row-${loc.id}`}
+                      className={`hover:bg-gray-800/40 transition-colors group ${selectedIds.has(loc.id) ? 'bg-blue-950/20' : ''}`}>
+                      <td className="py-3 pl-1">
+                        <input type="checkbox" checked={selectedIds.has(loc.id)} onChange={() => toggleSelect(loc.id)}
+                          className="w-4 h-4 accent-blue-500 cursor-pointer" />
+                      </td>
                       <td className="py-3 pl-1">
                         <button onClick={() => toggleExpand(loc)}
                           className="text-gray-600 hover:text-gray-300 transition-colors text-xs w-6 h-6
@@ -872,7 +1015,7 @@ function ProductLocationTab() {
                   ),
                   isExpanded && (
                     <tr key={`expand-${loc.id}`}>
-                      <td colSpan={5} className="pb-3 px-4">
+                      <td colSpan={6} className="pb-3 px-4">
                         <div className="bg-gray-800/60 border border-gray-700/60 rounded-xl p-3">
                           <p className="text-xs text-gray-500 mb-2 font-semibold">
                             배정된 상품
@@ -904,6 +1047,7 @@ function ProductLocationTab() {
               })}
             </tbody>
           </table>
+          </>
         )}
       </div>
 
