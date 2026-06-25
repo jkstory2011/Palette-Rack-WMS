@@ -15,6 +15,7 @@ const INIT_FORM = {
   locationId:  '',
   tier:        '',
   side:        '',
+  expiryAt:    '',
   items:       [{ productId: '', qty: '' }],  // 혼적: 상품 행 여러 개
 }
 
@@ -133,6 +134,7 @@ export default function InboundPage() {
           location_id: Number(form.locationId),
           tier:        Number(form.tier),
           side:        form.side,
+          expiry_at:   form.expiryAt || null,
         })
         .select('id')
         .single()
@@ -157,7 +159,7 @@ export default function InboundPage() {
       })
 
       setSuccess(`✅ 파렛트 ${form.palletCode} 입고 완료`)
-      setForm(INIT_FORM)
+      setForm({ ...INIT_FORM })
       setSelectedZone('')
       setLocations([])
       setEmptySlots([])
@@ -269,15 +271,31 @@ export default function InboundPage() {
           )}
         </Section>
 
-        {/* ── STEP 3: 상품 등록 (혼적 지원) */}
-        <Section step="3" title="상품 등록 (혼적 가능)">
+        {/* ── STEP 3: 유통/취급기한 */}
+        <Section step="3" title="유통/취급기한 (선택)">
+          <div>
+            <label className={labelCls}>기한 날짜</label>
+            <input
+              type="date"
+              value={form.expiryAt}
+              onChange={(e) => setForm((f) => ({ ...f, expiryAt: e.target.value }))}
+              className={inputCls}
+            />
+          </div>
+          <p className="text-xs text-gray-600">입력하지 않으면 기한 없음으로 처리됩니다.</p>
+        </Section>
+
+        {/* ── STEP 4: 상품 등록 (혼적 지원) */}
+        <Section step="4" title="상품 등록 (혼적 가능)">
           <div className="space-y-2">
             {form.items.map((item, i) => (
-              <div key={i} className="flex gap-2 items-start">
+              <div key={i} className="flex gap-2 items-center">
                 <select
                   value={item.productId}
                   onChange={(e) => updateItem(i, 'productId', e.target.value)}
-                  className={`${selectCls} flex-1`}
+                  className="flex-1 min-w-0 bg-gray-800 border border-gray-600 rounded-xl px-4 py-3
+                             text-white text-sm focus:outline-none focus:ring-2
+                             focus:ring-blue-500/50 focus:border-blue-500"
                 >
                   <option value="">상품 선택...</option>
                   {products.map((p) => (
@@ -290,7 +308,9 @@ export default function InboundPage() {
                   placeholder="수량"
                   value={item.qty}
                   onChange={(e) => updateItem(i, 'qty', e.target.value)}
-                  className={`${inputCls} w-24 shrink-0`}
+                  className="w-24 shrink-0 bg-gray-800 border border-gray-600 rounded-xl px-4 py-3
+                             text-white text-sm placeholder-gray-500 focus:outline-none
+                             focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500"
                 />
                 {/* 상품 단위 표시 */}
                 <span className="text-gray-500 text-sm self-center w-8 shrink-0">
