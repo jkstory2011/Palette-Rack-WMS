@@ -211,11 +211,13 @@ export default function ProductsPage() {
 
           {error && <p className="text-sm text-red-400">{error}</p>}
 
-          <button type="submit" disabled={saving}
-            className="w-full sm:w-auto px-8 py-3 rounded-xl bg-blue-600 hover:bg-blue-500
-                       text-white font-semibold transition-colors disabled:opacity-40">
-            {saving ? '등록 중...' : '+ 상품 등록'}
-          </button>
+          <div className="flex justify-end">
+            <button type="submit" disabled={saving}
+              className="px-8 py-3 rounded-xl bg-blue-600 hover:bg-blue-500
+                         text-white font-semibold transition-colors disabled:opacity-40">
+              {saving ? '등록 중...' : '+ 상품 등록'}
+            </button>
+          </div>
         </form>
 
         {/* ── 검색 + 목록 */}
