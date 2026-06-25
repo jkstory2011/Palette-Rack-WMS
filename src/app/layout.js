@@ -1,5 +1,8 @@
 import './globals.css'
 
+// 모든 페이지 동적 렌더링 강제 — 빌드 시 Supabase 프리렌더 오류 방지
+export const dynamic = 'force-dynamic'
+
 export const metadata = {
   title: 'Palette Rack WMS',
   description: '파렛트랙 입출고 관리 시스템',
