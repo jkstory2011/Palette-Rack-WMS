@@ -30,7 +30,7 @@ export default function RootLayout({ children }) {
             <NavLink href="/">🗺 조감도</NavLink>
             <NavLink href="/inbound">📥 입고</NavLink>
             <NavLink href="/outbound">🚛 출고</NavLink>
-            <NavLink href="/production">🏭 생산</NavLink>
+            <NavLink href="/production">🏭 B2B생산</NavLink>
             <NavLink href="/work-orders">📝 작업지시서</NavLink>
             <div className="w-px h-5 bg-gray-700 mx-1 hidden sm:block" />
             <NavLink href="/products">📋 상품</NavLink>
