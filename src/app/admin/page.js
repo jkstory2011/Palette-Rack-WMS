@@ -311,7 +311,7 @@ export default function AdminPage() {
   )
 }
 
-const POSITIONS = ['사용자', '사원', '주임', '대리', '과장', '차장', '부장', '이사', '상무', '전무', '부사장', '사장', '대표']
+const POSITIONS = ['사용자', '사원', '주임', '대리', '팀장', '과장', '차장', '부장', '실장', '대표']
 
 function PositionSelect({ user, onSave }) {
   return (
