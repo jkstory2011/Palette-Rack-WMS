@@ -2,6 +2,7 @@ import './globals.css'
 import { cookies } from 'next/headers'
 import ErrorBoundary from '@/components/ErrorBoundary'
 import AuthButton from '@/components/LogoutButton'
+import { verifyToken } from '@/lib/auth'
 
 // 모든 페이지 동적 렌더링 강제 — 빌드 시 Supabase 프리렌더 오류 방지
 export const dynamic = 'force-dynamic'
@@ -11,8 +12,15 @@ export const metadata = {
   description: '파렛트랙 입출고 관리 시스템',
 }
 
-export default function RootLayout({ children }) {
-  const isLoggedIn = cookies().get('wms_auth')?.value === '1'
+export default async function RootLayout({ children }) {
+  const jar       = cookies()
+  const devAdmin  = jar.get('wms_auth')?.value === '1'
+  const userToken = jar.get('wms_user')?.value
+  const userPayload = userToken ? await verifyToken(userToken) : null
+
+  const isLoggedIn = devAdmin || userPayload !== null
+  const isAdmin    = devAdmin || userPayload?.role === 'admin'
+  const displayName = devAdmin ? '개발관리자' : (userPayload?.displayName ?? null)
 
   return (
     <html lang="ko">
@@ -39,7 +47,16 @@ export default function RootLayout({ children }) {
             <NavLink href="/products">📋 상품</NavLink>
             <NavLink href="/locations">📍 로케이션</NavLink>
             <NavLink href="/logs">📜 이력</NavLink>
+            {isAdmin && (
+              <>
+                <div className="w-px h-5 bg-gray-700 mx-1 hidden sm:block" />
+                <NavLink href="/admin">⚙ 관리</NavLink>
+              </>
+            )}
             <div className="w-px h-5 bg-gray-700 mx-1 hidden sm:block" />
+            {displayName && (
+              <span className="text-xs text-gray-500 hidden sm:block px-2">{displayName}</span>
+            )}
             <AuthButton isLoggedIn={isLoggedIn} />
           </nav>
         </header>
@@ -55,7 +72,6 @@ export default function RootLayout({ children }) {
   )
 }
 
-// 간단한 네비게이션 링크 — Next.js Link는 클라이언트 컴포넌트에서 쓰므로 별도 분리
 function NavLink({ href, children }) {
   return (
     <a
