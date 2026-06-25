@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, useRef } from 'react'
 import { supabase } from '@/lib/supabase'
 
 const EMPTY_FORM = { code: '', name: '', unit: 'BOX', barcode: '', client_name: '', expiry_at: '' }
@@ -15,6 +15,7 @@ export default function ProductsPage() {
   const [selectedProduct, setSelectedProduct] = useState(null)
   const [rackLocations, setRackLocations]     = useState([])
   const [loadingModal, setLoadingModal]       = useState(false)
+  const [showExcelModal, setShowExcelModal]   = useState(false)
 
   async function fetchProducts() {
     const { data } = await supabase
@@ -44,7 +45,6 @@ export default function ProductsPage() {
 
   useEffect(() => { fetchProducts() }, [])
 
-  // 상품 클릭 → 로케이션 팝업
   const openModal = useCallback(async (product) => {
     setSelectedProduct(product)
     setRackLocations([])
@@ -106,9 +106,18 @@ export default function ProductsPage() {
 
       {/* ── 등록 폼 */}
       <form onSubmit={handleSubmit} className="wms-card space-y-4">
-        <h2 className="text-base font-semibold text-gray-300">신규 상품 등록</h2>
+        <div className="flex items-center justify-between">
+          <h2 className="text-base font-semibold text-gray-300">신규 상품 등록</h2>
+          <button
+            type="button"
+            onClick={() => setShowExcelModal(true)}
+            className="px-4 py-2 rounded-xl bg-emerald-700 hover:bg-emerald-600
+                       text-white text-sm font-semibold transition-colors flex items-center gap-2"
+          >
+            📊 엑셀 일괄등록
+          </button>
+        </div>
 
-        {/* 1행: 상품코드 / 상품명 / 바코드 / 단위 */}
         <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
           <FieldInput label="상품코드 *" placeholder="PRD-001"
             value={form.code} onChange={(v) => setForm((f) => ({ ...f, code: v }))} />
@@ -120,7 +129,6 @@ export default function ProductsPage() {
             value={form.unit} onChange={(v) => setForm((f) => ({ ...f, unit: v }))} />
         </div>
 
-        {/* 2행: 화주사명 / 유통취급기한 */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <FieldInput label="화주사명" placeholder="(주)OO물류"
             value={form.client_name} onChange={(v) => setForm((f) => ({ ...f, client_name: v }))} />
@@ -255,6 +263,291 @@ export default function ProductsPage() {
           onClose={closeModal}
         />
       )}
+
+      {/* ── 엑셀 일괄등록 모달 */}
+      {showExcelModal && (
+        <ExcelImportModal
+          onClose={() => setShowExcelModal(false)}
+          onSuccess={() => { setShowExcelModal(false); fetchProducts() }}
+        />
+      )}
+    </div>
+  )
+}
+
+/* ── 엑셀 일괄등록 모달 */
+function ExcelImportModal({ onClose, onSuccess }) {
+  const fileRef   = useRef(null)
+  const [rows, setRows]         = useState([])     // 파싱된 미리보기 행
+  const [importing, setImporting] = useState(false)
+  const [result, setResult]     = useState(null)   // { success, skipped, errors }
+  const [parseError, setParseError] = useState('')
+
+  useEffect(() => {
+    const handler = (e) => { if (e.key === 'Escape') onClose() }
+    window.addEventListener('keydown', handler)
+    return () => window.removeEventListener('keydown', handler)
+  }, [onClose])
+
+  // 엑셀 날짜 시리얼 → YYYY-MM-DD
+  function excelDateToStr(val) {
+    if (!val) return null
+    if (typeof val === 'number') {
+      // Excel 날짜 시리얼 변환
+      const date = new Date((val - 25569) * 86400 * 1000)
+      return date.toISOString().slice(0, 10)
+    }
+    const s = String(val).trim()
+    if (!s) return null
+    // YYYY-MM-DD / YYYY/MM/DD / YY-MM-DD 등 처리
+    const m = s.match(/(\d{2,4})[\/\-\.](\d{1,2})[\/\-\.](\d{1,2})/)
+    if (m) {
+      const y = m[1].length === 2 ? `20${m[1]}` : m[1]
+      return `${y}-${m[2].padStart(2,'0')}-${m[3].padStart(2,'0')}`
+    }
+    return null
+  }
+
+  async function handleFile(e) {
+    const file = e.target.files[0]
+    if (!file) return
+    setParseError('')
+    setRows([])
+    setResult(null)
+
+    try {
+      const XLSX = await import('xlsx')
+      const buffer = await file.arrayBuffer()
+      const wb = XLSX.read(buffer, { type: 'array' })
+      const ws = wb.Sheets[wb.SheetNames[0]]
+      const raw = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '' })
+
+      // 첫 행 = 헤더, 나머지 = 데이터
+      const dataRows = raw.slice(1).filter((r) => r.some((c) => String(c).trim()))
+
+      const parsed = dataRows.map((r, i) => ({
+        _row: i + 2,
+        code:        String(r[0] ?? '').trim(),
+        name:        String(r[1] ?? '').trim(),
+        unit:        String(r[2] ?? '').trim() || 'BOX',
+        barcode:     String(r[3] ?? '').trim() || null,
+        client_name: String(r[4] ?? '').trim() || null,
+        expiry_at:   excelDateToStr(r[5]),
+        _valid:      !!(String(r[0] ?? '').trim() && String(r[1] ?? '').trim()),
+      }))
+
+      if (parsed.length === 0) {
+        setParseError('데이터가 없습니다. 양식을 확인해주세요.')
+        return
+      }
+      setRows(parsed)
+    } catch (err) {
+      setParseError('파일을 읽는 중 오류가 발생했습니다: ' + err.message)
+    }
+  }
+
+  async function downloadTemplate() {
+    const XLSX = await import('xlsx')
+    const ws = XLSX.utils.aoa_to_sheet([
+      ['상품코드*', '상품명*', '단위', '바코드', '화주사명', '유통/취급기한(YYYY-MM-DD)'],
+      ['PRD-001', '삼다수 2L 6입', 'BOX', '8801234567890', '(주)샘물', '2026-12-31'],
+      ['PRD-002', '포카리스웨트 500ml', 'EA', '8801095814050', '(주)동아오츠카', '2026-06-30'],
+    ])
+    // 열 너비 설정
+    ws['!cols'] = [{ wch: 14 }, { wch: 24 }, { wch: 8 }, { wch: 16 }, { wch: 18 }, { wch: 22 }]
+    const wb = XLSX.utils.book_new()
+    XLSX.utils.book_append_sheet(wb, ws, '상품목록')
+    XLSX.writeFile(wb, '상품등록양식.xlsx')
+  }
+
+  async function handleImport() {
+    const validRows = rows.filter((r) => r._valid)
+    if (validRows.length === 0) return
+
+    setImporting(true)
+    let success = 0
+    let skipped = 0
+    const errors = []
+
+    for (const row of validRows) {
+      const { error } = await supabase.from('products').insert({
+        code:        row.code,
+        name:        row.name,
+        unit:        row.unit,
+        barcode:     row.barcode,
+        client_name: row.client_name,
+        expiry_at:   row.expiry_at,
+      })
+      if (!error) {
+        success++
+      } else if (error.code === '23505') {
+        skipped++
+      } else {
+        errors.push(`${row.code}: ${error.message}`)
+      }
+    }
+
+    setImporting(false)
+    setResult({ success, skipped, errors })
+    if (success > 0) onSuccess()
+  }
+
+  const validCount   = rows.filter((r) => r._valid).length
+  const invalidCount = rows.filter((r) => !r._valid).length
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4"
+      style={{ backgroundColor: 'rgba(0,0,0,0.75)' }} onClick={onClose}>
+      <div className="bg-gray-900 border border-gray-700 rounded-2xl w-full max-w-4xl
+                      shadow-2xl max-h-[90vh] flex flex-col"
+        onClick={(e) => e.stopPropagation()}>
+
+        {/* 헤더 */}
+        <div className="flex items-center justify-between p-6 border-b border-gray-700">
+          <div>
+            <h2 className="text-lg font-bold text-white">📊 엑셀 일괄등록</h2>
+            <p className="text-xs text-gray-500 mt-1">
+              엑셀 양식을 다운로드해 작성 후 업로드하세요. 중복 상품코드는 자동 건너뜁니다.
+            </p>
+          </div>
+          <button onClick={onClose}
+            className="text-gray-500 hover:text-white transition-colors text-2xl leading-none ml-4">
+            ✕
+          </button>
+        </div>
+
+        <div className="overflow-y-auto flex-1 p-6 space-y-5">
+
+          {/* Step 1: 양식 다운로드 */}
+          <div className="flex items-center gap-4">
+            <div className="flex-1">
+              <p className="text-sm font-semibold text-gray-300 mb-1">① 양식 다운로드</p>
+              <p className="text-xs text-gray-500">
+                열 순서: 상품코드* / 상품명* / 단위 / 바코드 / 화주사명 / 유통기한
+              </p>
+            </div>
+            <button
+              onClick={downloadTemplate}
+              className="px-4 py-2 rounded-xl bg-gray-700 hover:bg-gray-600
+                         text-white text-sm font-semibold transition-colors whitespace-nowrap"
+            >
+              ⬇ 양식 다운로드
+            </button>
+          </div>
+
+          <div className="border-t border-gray-800" />
+
+          {/* Step 2: 파일 업로드 */}
+          <div>
+            <p className="text-sm font-semibold text-gray-300 mb-3">② 파일 업로드</p>
+            <div
+              onClick={() => fileRef.current?.click()}
+              className="border-2 border-dashed border-gray-600 hover:border-emerald-500
+                         rounded-xl p-8 text-center cursor-pointer transition-colors"
+            >
+              <p className="text-gray-400 text-sm">
+                클릭하여 파일 선택 (.xlsx, .xls)
+              </p>
+              <p className="text-gray-600 text-xs mt-1">또는 파일을 이 영역으로 드래그</p>
+              <input
+                ref={fileRef}
+                type="file"
+                accept=".xlsx,.xls"
+                className="hidden"
+                onChange={handleFile}
+              />
+            </div>
+            {parseError && <p className="text-red-400 text-sm mt-2">{parseError}</p>}
+          </div>
+
+          {/* Step 3: 미리보기 */}
+          {rows.length > 0 && !result && (
+            <div>
+              <div className="flex items-center justify-between mb-3">
+                <p className="text-sm font-semibold text-gray-300">③ 미리보기</p>
+                <div className="flex items-center gap-3 text-xs">
+                  <span className="text-emerald-400">유효 {validCount}건</span>
+                  {invalidCount > 0 && (
+                    <span className="text-red-400">필수값 누락 {invalidCount}건 (건너뜀)</span>
+                  )}
+                </div>
+              </div>
+              <div className="overflow-x-auto rounded-xl border border-gray-700 max-h-60">
+                <table className="w-full text-xs min-w-[700px]">
+                  <thead className="bg-gray-800 sticky top-0">
+                    <tr className="text-gray-400">
+                      <th className="px-3 py-2 text-left font-medium w-10">행</th>
+                      <th className="px-3 py-2 text-left font-medium">상품코드</th>
+                      <th className="px-3 py-2 text-left font-medium">상품명</th>
+                      <th className="px-3 py-2 text-left font-medium w-16">단위</th>
+                      <th className="px-3 py-2 text-left font-medium">바코드</th>
+                      <th className="px-3 py-2 text-left font-medium">화주사명</th>
+                      <th className="px-3 py-2 text-left font-medium">유통기한</th>
+                      <th className="px-3 py-2 text-center font-medium w-14">상태</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-800">
+                    {rows.map((r) => (
+                      <tr key={r._row}
+                        className={r._valid ? 'hover:bg-gray-800/40' : 'bg-red-900/10'}>
+                        <td className="px-3 py-2 text-gray-600">{r._row}</td>
+                        <td className="px-3 py-2 font-mono text-gray-300">{r.code || <span className="text-red-400">없음</span>}</td>
+                        <td className="px-3 py-2 text-white">{r.name || <span className="text-red-400">없음</span>}</td>
+                        <td className="px-3 py-2 text-gray-400">{r.unit}</td>
+                        <td className="px-3 py-2 text-gray-500">{r.barcode ?? '—'}</td>
+                        <td className="px-3 py-2 text-gray-500">{r.client_name ?? '—'}</td>
+                        <td className="px-3 py-2 text-gray-500">{r.expiry_at ?? '—'}</td>
+                        <td className="px-3 py-2 text-center">
+                          {r._valid
+                            ? <span className="text-emerald-400">✓</span>
+                            : <span className="text-red-400">✗</span>}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
+          {/* 결과 */}
+          {result && (
+            <div className="rounded-xl border border-gray-700 p-5 space-y-2">
+              <p className="text-sm font-semibold text-white">등록 완료</p>
+              <div className="flex items-center gap-6 text-sm">
+                <span className="text-emerald-400 font-bold">✓ 등록 성공 {result.success}건</span>
+                {result.skipped > 0 && (
+                  <span className="text-yellow-400">⚠ 중복 건너뜀 {result.skipped}건</span>
+                )}
+              </div>
+              {result.errors.length > 0 && (
+                <div className="mt-2 text-xs text-red-400 space-y-1">
+                  {result.errors.map((e, i) => <p key={i}>{e}</p>)}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* 하단 버튼 */}
+        <div className="p-6 border-t border-gray-700 flex items-center justify-end gap-3">
+          <button onClick={onClose}
+            className="px-5 py-2.5 rounded-xl bg-gray-700 hover:bg-gray-600
+                       text-white text-sm font-semibold transition-colors">
+            닫기
+          </button>
+          {rows.length > 0 && !result && (
+            <button
+              onClick={handleImport}
+              disabled={importing || validCount === 0}
+              className="px-6 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500
+                         disabled:opacity-40 text-white text-sm font-semibold transition-colors"
+            >
+              {importing ? '등록 중...' : `📥 ${validCount}건 등록`}
+            </button>
+          )}
+        </div>
+      </div>
     </div>
   )
 }
@@ -276,7 +569,6 @@ function LocationModal({ product, locations, loading, onClose }) {
                       shadow-2xl max-h-[80vh] flex flex-col"
         onClick={(e) => e.stopPropagation()}>
 
-        {/* 헤더 */}
         <div className="flex items-start justify-between p-6 border-b border-gray-700">
           <div>
             <div className="flex items-center gap-2 flex-wrap">
@@ -306,7 +598,6 @@ function LocationModal({ product, locations, loading, onClose }) {
           </button>
         </div>
 
-        {/* 본문 */}
         <div className="overflow-y-auto flex-1 p-6">
           {loading ? (
             <p className="text-center text-gray-500 py-8 animate-pulse">불러오는 중...</p>
