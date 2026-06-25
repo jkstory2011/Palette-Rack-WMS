@@ -1,15 +1,16 @@
 import { createClient } from '@supabase/supabase-js'
 
-const supabaseUrl     = process.env.NEXT_PUBLIC_SUPABASE_URL     || 'https://placeholder.supabase.co'
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'placeholder-key'
+const supabaseUrl     = process.env.NEXT_PUBLIC_SUPABASE_URL     ?? 'https://placeholder.supabase.co'
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? 'placeholder-key'
 
-if (
-  process.env.NEXT_PUBLIC_SUPABASE_URL === undefined ||
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY === undefined
-) {
-  console.warn('[WMS] NEXT_PUBLIC_SUPABASE_URL / NEXT_PUBLIC_SUPABASE_ANON_KEY 환경변수가 설정되지 않았습니다.')
+let _client = null
+
+try {
+  _client = createClient(supabaseUrl, supabaseAnonKey, {
+    realtime: { params: { eventsPerSecond: 10 } },
+  })
+} catch (e) {
+  console.warn('[WMS] Supabase 초기화 실패:', e.message)
 }
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
-  realtime: { params: { eventsPerSecond: 10 } },
-})
+export const supabase = _client
