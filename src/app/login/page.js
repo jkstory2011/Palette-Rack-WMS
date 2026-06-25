@@ -60,11 +60,11 @@ export default function LoginPage() {
         {/* 콘텐츠 */}
         <div className="relative z-10 p-12 flex flex-col justify-between h-full">
           {/* 상단 로고 */}
-          <div className="flex items-center gap-3">
-            <span className="text-3xl">📦</span>
+          <div className="flex items-center gap-4">
+            <span className="text-5xl">📦</span>
             <div>
-              <p className="text-white font-black text-xl tracking-tight">Palette Rack WMS</p>
-              <p className="text-gray-400 text-xs">파렛트랙 입출고 관리 시스템</p>
+              <p className="text-white font-black text-3xl tracking-tight">Palette Rack WMS</p>
+              <p className="text-gray-400 text-sm mt-0.5">파렛트랙 입출고 관리 시스템</p>
             </div>
           </div>
 
