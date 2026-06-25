@@ -89,6 +89,23 @@ export default function AdminPage() {
     }
   }
 
+  async function changePosition(user, position) {
+    setUsers(prev => prev.map(u => u.id === user.id ? { ...u, position } : u))
+    try {
+      const res  = await fetch(`/api/admin/users/${user.id}`, {
+        method:  'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ position }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || `오류 (${res.status})`)
+      showToast(`${user.display_name} 직급을 ${position}으로 변경했습니다.`)
+    } catch (e) {
+      setUsers(prev => prev.map(u => u.id === user.id ? { ...u, position: user.position } : u))
+      showToast(e.message, 'error')
+    }
+  }
+
   async function changeRole(user, role) {
     // 낙관적 업데이트: 먼저 UI 즉시 반영
     setUsers(prev => prev.map(u => u.id === user.id ? { ...u, role } : u))
@@ -187,6 +204,9 @@ export default function AdminPage() {
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2">
                   <span className="text-white font-bold">{u.display_name}</span>
+                  {u.position && u.position !== '사용자' && (
+                    <span className="text-xs bg-gray-700 text-gray-300 px-2 py-0.5 rounded-full">{u.position}</span>
+                  )}
                   <span className="text-gray-500 text-sm font-mono">@{u.username}</span>
                 </div>
                 <p className="text-xs text-gray-600 mt-0.5">
@@ -220,6 +240,7 @@ export default function AdminPage() {
               <thead>
                 <tr className="text-left text-xs text-gray-500 border-b border-gray-700">
                   <th className="pb-2 pr-4 font-medium">이름</th>
+                  <th className="pb-2 pr-4 font-medium">직급</th>
                   <th className="pb-2 pr-4 font-medium">아이디</th>
                   <th className="pb-2 pr-4 font-medium">권한</th>
                   <th className="pb-2 pr-4 font-medium">상태</th>
@@ -234,6 +255,9 @@ export default function AdminPage() {
                   return (
                     <tr key={u.id} className="hover:bg-gray-800/40 transition-colors">
                       <td className="py-3 pr-4 text-white font-medium">{u.display_name}</td>
+                      <td className="py-3 pr-4">
+                        <PositionSelect user={u} onSave={(pos) => changePosition(u, pos)} />
+                      </td>
                       <td className="py-3 pr-4 font-mono text-gray-400 text-xs">@{u.username}</td>
                       <td className="py-3 pr-4">
                         <select value={u.role} onChange={e => changeRole(u, e.target.value)}
@@ -284,5 +308,20 @@ export default function AdminPage() {
         </div>
       )}
     </div>
+  )
+}
+
+const POSITIONS = ['사용자', '사원', '주임', '대리', '과장', '차장', '부장', '이사', '상무', '전무', '부사장', '사장', '대표']
+
+function PositionSelect({ user, onSave }) {
+  return (
+    <select
+      value={user.position || '사용자'}
+      onChange={e => onSave(e.target.value)}
+      className="bg-gray-800 border border-gray-700 rounded-lg px-2 py-1 text-xs text-gray-300
+                 focus:outline-none focus:ring-1 focus:ring-blue-500 min-w-[70px]"
+    >
+      {POSITIONS.map(p => <option key={p} value={p}>{p}</option>)}
+    </select>
   )
 }

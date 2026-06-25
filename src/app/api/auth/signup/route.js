@@ -5,7 +5,7 @@ import { getSupabaseAdmin } from '@/lib/supabase-server'
 export const dynamic = 'force-dynamic'
 
 export async function POST(req) {
-  const { username, displayName, password } = await req.json()
+  const { username, displayName, password, position } = await req.json()
 
   if (!username?.trim() || !displayName?.trim() || !password) {
     return NextResponse.json({ error: '모든 항목을 입력하세요.' }, { status: 400 })
@@ -24,6 +24,7 @@ export async function POST(req) {
     username:      username.trim().toLowerCase(),
     display_name:  displayName.trim(),
     password_hash: hash,
+    position:      position?.trim() || '사용자',
   })
 
   if (error) {

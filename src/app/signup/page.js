@@ -3,7 +3,7 @@
 import { useState } from 'react'
 
 export default function SignupPage() {
-  const [form, setForm]     = useState({ username: '', displayName: '', password: '', confirm: '' })
+  const [form, setForm]     = useState({ username: '', displayName: '', position: '', password: '', confirm: '' })
   const [error, setError]   = useState('')
   const [done, setDone]     = useState(false)
   const [loading, setLoading] = useState(false)
@@ -23,6 +23,7 @@ export default function SignupPage() {
         username:    form.username,
         displayName: form.displayName,
         password:    form.password,
+        position:    form.position || '사용자',
       }),
     })
     const data = await res.json()
@@ -82,6 +83,27 @@ export default function SignupPage() {
               className="w-full bg-gray-800 border border-gray-700 rounded-xl px-4 py-3
                          text-white placeholder-gray-600 text-sm
                          focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500" />
+          </div>
+
+          <div className="space-y-2">
+            <label className="text-sm text-gray-400 font-medium">직급</label>
+            <select value={form.position} onChange={f('position')}
+              className="w-full bg-gray-800 border border-gray-700 rounded-xl px-4 py-3
+                         text-white text-sm focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500">
+              <option value="">선택 안 함 (사용자)</option>
+              <option value="사원">사원</option>
+              <option value="주임">주임</option>
+              <option value="대리">대리</option>
+              <option value="과장">과장</option>
+              <option value="차장">차장</option>
+              <option value="부장">부장</option>
+              <option value="이사">이사</option>
+              <option value="상무">상무</option>
+              <option value="전무">전무</option>
+              <option value="부사장">부사장</option>
+              <option value="사장">사장</option>
+              <option value="대표">대표</option>
+            </select>
           </div>
 
           <div className="space-y-2">

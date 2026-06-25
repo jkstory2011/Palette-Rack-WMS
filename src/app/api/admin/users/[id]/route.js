@@ -6,7 +6,7 @@ export const dynamic = 'force-dynamic'
 
 export async function PATCH(req, { params }) {
   const body    = await req.json()
-  const ALLOWED = ['role', 'is_active', 'is_approved', 'approved_by', 'approved_at', 'display_name']
+  const ALLOWED = ['role', 'is_active', 'is_approved', 'approved_by', 'approved_at', 'display_name', 'position']
   const update  = Object.fromEntries(Object.entries(body).filter(([k]) => ALLOWED.includes(k)))
 
   if (body.new_password) {
