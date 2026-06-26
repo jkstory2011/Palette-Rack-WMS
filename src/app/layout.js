@@ -44,20 +44,12 @@ export default async function RootLayout({ children }) {
 
             {/* 브랜드 */}
             <div className="flex items-center gap-2.5 shrink-0">
-              <div className="flex items-center justify-center w-7 h-7 rounded-lg text-[11px] font-black
-                              tracking-tight text-white select-none"
-                style={{
-                  background: 'linear-gradient(135deg,#4338ca,#818cf8)',
-                  boxShadow: '0 0 14px rgba(99,102,241,0.45)',
-                  fontFamily: 'ui-monospace,monospace',
-                }}>
-                PR
-              </div>
-              <div className="hidden sm:flex flex-col leading-none">
-                <span className="text-[13px] font-black text-white tracking-[-0.3px]">Palette Rack</span>
-                <span className="text-[9px] font-semibold tracking-[0.18em] uppercase mt-0.5"
-                  style={{color:'rgba(99,102,241,0.7)',fontFamily:'ui-monospace,monospace'}}>
-                  WMS
+              <span className="text-2xl leading-none">📦</span>
+              <div className="hidden sm:flex flex-col leading-none gap-0.5">
+                <span className="text-[14px] font-black text-white tracking-tight">Palette Rack WMS</span>
+                <span className="text-[9px] font-semibold tracking-[0.15em] uppercase"
+                  style={{color:'rgba(100,116,139,0.7)',fontFamily:'ui-monospace,monospace'}}>
+                  파렛트랙 입출고 관리 시스템
                 </span>
               </div>
             </div>
