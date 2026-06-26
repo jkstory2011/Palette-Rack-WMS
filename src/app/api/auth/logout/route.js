@@ -14,3 +14,11 @@ export async function POST() {
   response.cookies.set('wms_user', '', COOKIE_OPTS)
   return response
 }
+
+export async function GET(request) {
+  const url = new URL('/login', request.url)
+  const response = NextResponse.redirect(url)
+  response.cookies.set('wms_auth', '', COOKIE_OPTS)
+  response.cookies.set('wms_user', '', COOKIE_OPTS)
+  return response
+}
