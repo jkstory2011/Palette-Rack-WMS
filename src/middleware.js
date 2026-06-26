@@ -19,9 +19,7 @@ export async function middleware(request) {
   const user      = userToken ? await verifyToken(userToken) : null
 
   const isAuthed = devAdmin || user !== null
-  // 관리자 페이지: 프로덕션에서는 JWT admin만, 개발에서는 devAdmin도 허용
-  const isDev   = process.env.NODE_ENV !== 'production'
-  const isAdmin = (isDev && devAdmin) || user?.role === 'admin'
+  const isAdmin = devAdmin || user?.role === 'admin'
 
   // 관리자 전용 경로
   if (ADMIN_PATHS.some(p => pathname.startsWith(p))) {
