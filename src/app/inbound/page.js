@@ -142,14 +142,14 @@ function RegisterTab({ onDone }) {
           {form.items.map((item, i) => (
             <div key={i} className="flex gap-2 items-center">
               <select value={item.productId} onChange={e => updateItem(i, 'productId', e.target.value)}
-                className="flex-1 min-w-0 bg-gray-800 border border-gray-600 rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/50">
+                className="flex-1 min-w-0 wms-select">
                 <option value="">상품 선택...</option>
                 {products.map(p => <option key={p.id} value={p.id}>{p.name} ({p.code})</option>)}
               </select>
               <div className="flex items-center gap-1 shrink-0">
                 <input type="number" min="1" placeholder="수량/파렛트"
                   value={item.qtyPerPallet} onChange={e => updateItem(i, 'qtyPerPallet', e.target.value)}
-                  className="w-28 bg-gray-800 border border-gray-600 rounded-xl px-3 py-3 text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/50" />
+                  className="w-28 wms-input" />
                 <span className="text-gray-500 text-sm w-10">
                   {products.find(p => String(p.id) === String(item.productId))?.unit ?? ''}
                 </span>
@@ -168,11 +168,11 @@ function RegisterTab({ onDone }) {
           + 상품 추가 (혼적)
         </button>
 
-        <div className="border-t border-gray-700 pt-3 flex items-center gap-6">
+        <div className="border-t border-white/10 pt-3 flex items-center gap-6">
           <Field label="파렛트 개수">
             <input type="number" min="1" value={form.palletCount}
               onChange={e => setForm(f => ({ ...f, palletCount: e.target.value }))}
-              className="w-28 bg-gray-800 border border-gray-600 rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/50" />
+              className="w-28 wms-input" />
           </Field>
           <div className="text-sm text-gray-400 space-y-0.5">
             <p>1파렛트당 <strong className="text-white">{totalPerPallet}</strong> 수량</p>
@@ -232,14 +232,14 @@ function InstructTab({ onDone }) {
             <div>
               <div className="flex items-center gap-2">
                 <span className="font-mono text-blue-400 font-bold text-sm">{order.order_no}</span>
-                {order.client_name && <span className="text-xs bg-gray-700 text-gray-300 px-2 py-0.5 rounded-full">{order.client_name}</span>}
+                {order.client_name && <span className="wms-tag">{order.client_name}</span>}
               </div>
               <p className="text-white font-semibold mt-0.5">
                 파렛트 <strong className="text-yellow-400">{order.pallet_count}개</strong>
               </p>
               <div className="flex flex-wrap gap-1 mt-1">
                 {(order.inbound_order_items ?? []).map((it, i) => (
-                  <span key={i} className="text-xs text-gray-400 bg-gray-800 px-2 py-0.5 rounded">
+                  <span key={i} className="wms-tag rounded">
                     {it.products?.name} × {it.qty_per_pallet}{it.products?.unit}
                   </span>
                 ))}
@@ -393,10 +393,11 @@ function InstructModal({ order, zones, onClose, onComplete }) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 no-print"
       style={{ backgroundColor: 'rgba(0,0,0,0.8)' }} onClick={onClose}>
-      <div className="bg-gray-900 border border-gray-700 rounded-2xl w-full max-w-2xl shadow-2xl max-h-[90vh] flex flex-col"
+      <div className="rounded-2xl w-full max-w-2xl shadow-2xl max-h-[90vh] flex flex-col"
+        style={{background:'linear-gradient(135deg,rgba(15,20,40,0.98) 0%,rgba(8,12,24,0.99) 100%)',border:'1px solid rgba(255,255,255,0.10)'}}
         onClick={e => e.stopPropagation()}>
 
-        <div className="flex items-center justify-between p-5 border-b border-gray-700">
+        <div className="flex items-center justify-between p-5" style={{borderBottom:'1px solid rgba(255,255,255,0.08)'}}>
           <div>
             <h2 className="text-lg font-bold text-white">입고지시</h2>
             <p className="text-sm text-gray-400">{order.order_no} · 파렛트 {order.pallet_count}개</p>
@@ -429,7 +430,7 @@ function InstructModal({ order, zones, onClose, onComplete }) {
               <div>
                 <label className="block text-xs text-gray-400 mb-1">배치 구역 선택</label>
                 <select value={selectedZone} onChange={e => handleZoneChange(e.target.value)}
-                  className="w-full bg-gray-800 border border-gray-600 rounded-xl px-4 py-3 text-white text-sm focus:outline-none">
+                  className="wms-select">
                   <option value="">구역 선택...</option>
                   {zones.map(z => <option key={z.id} value={z.id}>{z.code} — {z.name}</option>)}
                 </select>
@@ -456,7 +457,7 @@ function InstructModal({ order, zones, onClose, onComplete }) {
                           <th className="px-3 py-2 text-center">좌/우</th>
                         </tr>
                       </thead>
-                      <tbody className="divide-y divide-gray-800">
+                      <tbody className="divide-y divide-white/[0.06]">
                         {assignment.map((slot, i) => (
                           <tr key={i} className="hover:bg-gray-800/40">
                             <td className="px-3 py-2 text-gray-600">{i + 1}</td>
@@ -479,7 +480,7 @@ function InstructModal({ order, zones, onClose, onComplete }) {
           )}
         </div>
 
-        <div className="p-5 border-t border-gray-700 flex gap-3">
+        <div className="p-5 border-t border-white/10 flex gap-3">
           {done ? (
             <button onClick={onComplete}
               className="flex-1 py-3 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-sm transition-colors">
@@ -598,12 +599,12 @@ function CompleteTab({ onDone }) {
             <div>
               <div className="flex items-center gap-2">
                 <span className="font-mono text-yellow-400 font-bold text-sm">{order.order_no}</span>
-                {order.client_name && <span className="text-xs bg-gray-700 text-gray-300 px-2 py-0.5 rounded-full">{order.client_name}</span>}
+                {order.client_name && <span className="wms-tag">{order.client_name}</span>}
               </div>
               <p className="text-white font-semibold mt-0.5">파렛트 <strong className="text-yellow-400">{order.pallet_count}개</strong> — 작업자 확인 대기</p>
               <div className="flex flex-wrap gap-1 mt-1">
                 {(order.inbound_order_items ?? []).map((it, i) => (
-                  <span key={i} className="text-xs text-gray-400 bg-gray-800 px-2 py-0.5 rounded">
+                  <span key={i} className="wms-tag rounded">
                     {it.products?.name} × {it.qty_per_pallet}{it.products?.unit}
                   </span>
                 ))}
@@ -729,6 +730,4 @@ function Field({ label, children }) {
   )
 }
 
-const inputCls = `w-full bg-gray-800 border border-gray-600 rounded-xl px-4 py-3
-  text-white text-sm placeholder-gray-600
-  focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500`
+const inputCls = 'wms-input'

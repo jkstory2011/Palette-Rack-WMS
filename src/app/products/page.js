@@ -258,9 +258,7 @@ export default function ProductsPage() {
             </h2>
             <input type="search" placeholder="코드, 이름, 바코드, 로케이션 검색..."
               value={search} onChange={e => setSearch(e.target.value)}
-              className="bg-gray-800 border border-gray-600 rounded-xl px-4 py-2
-                         text-white text-sm placeholder-gray-500 focus:outline-none
-                         focus:ring-2 focus:ring-blue-500/50 w-60" />
+              className="wms-input py-2 w-60" />
           </div>
 
           {loading ? (
@@ -586,15 +584,16 @@ function ExcelImportModal({ onClose, onSuccess }) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4"
       style={{ backgroundColor: 'rgba(0,0,0,0.75)' }} onClick={onClose}>
-      <div className="bg-gray-900 border border-gray-700 rounded-2xl w-full max-w-5xl
-                      shadow-2xl max-h-[90vh] flex flex-col" onClick={e => e.stopPropagation()}>
+      <div className="rounded-2xl w-full max-w-5xl shadow-2xl max-h-[90vh] flex flex-col"
+           style={{background:'linear-gradient(135deg,rgba(15,20,40,0.98) 0%,rgba(8,12,24,0.99) 100%)',border:'1px solid rgba(255,255,255,0.10)'}}
+           onClick={e => e.stopPropagation()}>
 
-        <div className="flex items-center justify-between p-6 border-b border-gray-700">
+        <div className="flex items-center justify-between p-6" style={{borderBottom:'1px solid rgba(255,255,255,0.08)'}}>
           <div>
             <h2 className="text-lg font-bold text-white">📊 엑셀 일괄등록</h2>
-            <p className="text-xs text-gray-500 mt-1">양식을 다운로드해 작성 후 업로드하세요. 중복 상품코드는 자동 건너뜁니다.</p>
+            <p className="text-xs text-slate-500 mt-1">양식을 다운로드해 작성 후 업로드하세요. 중복 상품코드는 자동 건너뜁니다.</p>
           </div>
-          <button onClick={onClose} className="text-gray-500 hover:text-white text-2xl leading-none ml-4">✕</button>
+          <button onClick={onClose} className="text-slate-500 hover:text-white text-2xl leading-none ml-4">✕</button>
         </div>
 
         <div className="overflow-y-auto flex-1 p-6 space-y-5">
@@ -604,7 +603,7 @@ function ExcelImportModal({ onClose, onSuccess }) {
               <p className="text-xs text-gray-500">열 순서: 상품코드* / 상품명* / 단위 / 바코드 / 화주사명 / 유통기한 / 관리로케이션 / BOX내품수</p>
             </div>
             <button onClick={downloadTemplate}
-              className="px-4 py-2 rounded-xl bg-gray-700 hover:bg-gray-600 text-white text-sm font-semibold transition-colors whitespace-nowrap">
+              className="wms-btn wms-btn-ghost whitespace-nowrap">
               ⬇ 양식 다운로드
             </button>
           </div>
@@ -686,15 +685,11 @@ function ExcelImportModal({ onClose, onSuccess }) {
           )}
         </div>
 
-        <div className="p-6 border-t border-gray-700 flex items-center justify-end gap-3">
-          <button onClick={onClose}
-            className="px-5 py-2.5 rounded-xl bg-gray-700 hover:bg-gray-600 text-white text-sm font-semibold transition-colors">
-            닫기
-          </button>
+        <div className="p-6 flex items-center justify-end gap-3" style={{borderTop:'1px solid rgba(255,255,255,0.08)'}}>
+          <button onClick={onClose} className="wms-btn wms-btn-ghost">닫기</button>
           {rows.length > 0 && !result && (
             <button onClick={handleImport} disabled={importing || validCount === 0}
-              className="px-6 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500
-                         disabled:opacity-40 text-white text-sm font-semibold transition-colors">
+              className="wms-btn wms-btn-success">
               {importing ? '등록 중...' : `📥 ${validCount}건 등록`}
             </button>
           )}
@@ -717,15 +712,16 @@ function LocationModal({ product, locations, loading, onClose }) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4"
       style={{ backgroundColor: 'rgba(0,0,0,0.7)' }} onClick={onClose}>
-      <div className="bg-gray-900 border border-gray-700 rounded-2xl w-full max-w-2xl
-                      shadow-2xl max-h-[80vh] flex flex-col" onClick={e => e.stopPropagation()}>
+      <div className="rounded-2xl w-full max-w-2xl shadow-2xl max-h-[80vh] flex flex-col"
+           style={{background:'linear-gradient(135deg,rgba(15,20,40,0.98) 0%,rgba(8,12,24,0.99) 100%)',border:'1px solid rgba(255,255,255,0.10)'}}
+           onClick={e => e.stopPropagation()}>
 
-        <div className="flex items-start justify-between p-6 border-b border-gray-700">
+        <div className="flex items-start justify-between p-6" style={{borderBottom:'1px solid rgba(255,255,255,0.08)'}}>
           <div>
             <div className="flex items-center gap-2 flex-wrap">
-              <span className="text-xs font-mono text-gray-500">{product.code}</span>
+              <span className="text-xs font-mono text-slate-500">{product.code}</span>
               {product.client_name && (
-                <span className="text-xs bg-gray-700 text-gray-300 px-2 py-0.5 rounded-full">{product.client_name}</span>
+                <span className="wms-tag">{product.client_name}</span>
               )}
             </div>
             <h2 className="text-lg font-bold text-white mt-1">{product.name}</h2>
@@ -837,6 +833,4 @@ function FieldInput({ label, value, onChange, placeholder, type = 'text', classN
   )
 }
 
-const inputCls = `bg-gray-800 border border-gray-600 rounded-xl px-4 py-3
-  text-white placeholder-gray-600 text-sm
-  focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500`
+const inputCls = 'wms-input'

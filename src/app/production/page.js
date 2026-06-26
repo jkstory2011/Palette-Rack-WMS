@@ -134,14 +134,14 @@ function RegisterTab({ onDone }) {
           {form.items.map((item, i) => (
             <div key={i} className="flex gap-2 items-center">
               <select value={item.productId} onChange={e => updateItem(i, 'productId', e.target.value)}
-                className="flex-1 min-w-0 bg-gray-800 border border-gray-600 rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/50">
+                className="flex-1 min-w-0 wms-select">
                 <option value="">상품 선택...</option>
                 {products.map(p => <option key={p.id} value={p.id}>{p.name} ({p.code})</option>)}
               </select>
               <div className="flex items-center gap-1 shrink-0">
                 <input type="number" min="1" placeholder="목표수량"
                   value={item.targetQty} onChange={e => updateItem(i, 'targetQty', e.target.value)}
-                  className="w-28 bg-gray-800 border border-gray-600 rounded-xl px-3 py-3 text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/50" />
+                  className="w-28 wms-input" />
                 <span className="text-gray-500 text-sm w-10">
                   {products.find(p => String(p.id) === String(item.productId))?.unit ?? ''}
                 </span>
@@ -255,7 +255,7 @@ function ProductionOrderCard({ order, onStart, onComplete, isUpdating }) {
           <div className="flex items-center gap-2 flex-wrap">
             <span className="font-mono text-blue-400 font-bold text-sm">{order.order_no}</span>
             <span className={`text-xs px-2 py-0.5 rounded-full border ${st.cls}`}>{st.label}</span>
-            {order.client_name && <span className="text-xs bg-gray-700 text-gray-300 px-2 py-0.5 rounded-full">{order.client_name}</span>}
+            {order.client_name && <span className="wms-tag">{order.client_name}</span>}
           </div>
           {order.scheduled_date && <p className="text-xs text-gray-500 mt-1">예정일: {order.scheduled_date}</p>}
           {order.note && <p className="text-xs text-gray-500">{order.note}</p>}
@@ -284,7 +284,7 @@ function ProductionOrderCard({ order, onStart, onComplete, isUpdating }) {
                         placeholder={String(item.target_qty)}
                         value={producedMap[item.id] ?? ''}
                         onChange={e => setProducedMap(m => ({ ...m, [item.id]: e.target.value }))}
-                        className="w-20 bg-gray-800 border border-gray-600 rounded-lg px-2 py-1 text-white text-sm text-center" />
+                        className="w-20 wms-input py-1 px-2 text-center rounded-lg" />
                       <span className="text-gray-500 text-xs">/ {item.target_qty} {item.products?.unit}</span>
                     </div>
                   ) : (
@@ -337,16 +337,16 @@ function CompletedTab() {
     <div className="wms-card overflow-x-auto">
       <table className="w-full text-sm">
         <thead>
-          <tr className="text-xs text-gray-500 border-b border-gray-700 text-left">
-            <th className="pb-2 font-medium">완료일시</th>
-            <th className="pb-2 font-medium">오더번호</th>
-            <th className="pb-2 font-medium">화주사</th>
-            <th className="pb-2 font-medium">생산 상품</th>
+          <tr className="text-left" style={{borderBottom:'1px solid rgba(255,255,255,0.08)'}}>
+            <th className="pb-2.5 text-xs font-semibold tracking-[0.1em] uppercase font-mono text-slate-500">완료일시</th>
+            <th className="pb-2.5 text-xs font-semibold tracking-[0.1em] uppercase font-mono text-slate-500">오더번호</th>
+            <th className="pb-2.5 text-xs font-semibold tracking-[0.1em] uppercase font-mono text-slate-500">화주사</th>
+            <th className="pb-2.5 text-xs font-semibold tracking-[0.1em] uppercase font-mono text-slate-500">생산 상품</th>
           </tr>
         </thead>
-        <tbody className="divide-y divide-gray-800">
+        <tbody className="divide-y divide-white/[0.05]">
           {orders.map(order => (
-            <tr key={order.id} className="hover:bg-gray-800/40 align-top">
+            <tr key={order.id} className="hover:bg-white/[0.02] align-top">
               <td className="py-3 text-gray-500 text-xs whitespace-nowrap">
                 {order.completed_at ? new Date(order.completed_at).toLocaleString('ko-KR') : '—'}
               </td>
@@ -381,6 +381,4 @@ function Field({ label, children }) {
   )
 }
 
-const inputCls = `w-full bg-gray-800 border border-gray-600 rounded-xl px-4 py-3
-  text-white text-sm placeholder-gray-600
-  focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500`
+const inputCls = 'wms-input'

@@ -151,10 +151,11 @@ export default function AdminPage() {
 
       {/* 토스트 */}
       {toast && (
-        <div className={`fixed top-5 right-5 z-50 px-5 py-3 rounded-xl shadow-lg text-sm font-semibold
+        <div className={`fixed top-5 right-5 z-50 px-5 py-3 rounded-xl shadow-2xl text-sm font-semibold
           transition-all ${toast.type === 'error'
-            ? 'bg-red-900 border border-red-700 text-red-200'
-            : 'bg-green-900 border border-green-700 text-green-200'}`}>
+            ? 'wms-alert-error'
+            : 'wms-alert-success'}`}
+          style={{zIndex:9999}}>
           {toast.type === 'error' ? '❌ ' : '✅ '}{toast.msg}
         </div>
       )}
@@ -205,7 +206,7 @@ export default function AdminPage() {
                 <div className="flex items-center gap-2">
                   <span className="text-white font-bold">{u.display_name}</span>
                   {u.position && u.position !== '사용자' && (
-                    <span className="text-xs bg-gray-700 text-gray-300 px-2 py-0.5 rounded-full">{u.position}</span>
+                    <span className="wms-tag">{u.position}</span>
                   )}
                   <span className="text-gray-500 text-sm font-mono">@{u.username}</span>
                 </div>
@@ -215,11 +216,11 @@ export default function AdminPage() {
               </div>
               <div className="flex gap-2 shrink-0">
                 <button onClick={() => approve(u)} disabled={busy[u.id]}
-                  className="px-4 py-2 rounded-xl bg-green-700 hover:bg-green-600 text-white text-sm font-bold transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
+                  className="wms-btn wms-btn-success">
                   {busy[u.id] ? '처리 중...' : '✅ 승인'}
                 </button>
                 <button onClick={() => reject(u)} disabled={busy[u.id]}
-                  className="px-4 py-2 rounded-xl bg-red-800 hover:bg-red-700 text-white text-sm font-bold transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
+                  className="wms-btn wms-btn-danger">
                   🗑 거부
                 </button>
               </div>
@@ -238,31 +239,29 @@ export default function AdminPage() {
           ) : (
             <table className="w-full text-sm min-w-[700px]">
               <thead>
-                <tr className="text-left text-xs text-gray-500 border-b border-gray-700">
-                  <th className="pb-2 pr-4 font-medium">이름</th>
-                  <th className="pb-2 pr-4 font-medium">직급</th>
-                  <th className="pb-2 pr-4 font-medium">아이디</th>
-                  <th className="pb-2 pr-4 font-medium">권한</th>
-                  <th className="pb-2 pr-4 font-medium">상태</th>
-                  <th className="pb-2 pr-4 font-medium">마지막 로그인</th>
-                  <th className="pb-2 pr-4 font-medium">비밀번호 재설정</th>
-                  <th className="pb-2 font-medium">관리</th>
+                <tr className="text-left" style={{borderBottom:'1px solid rgba(255,255,255,0.08)'}}>
+                  <th className="pb-2.5 pr-4 text-xs font-semibold tracking-[0.1em] uppercase font-mono text-slate-500">이름</th>
+                  <th className="pb-2.5 pr-4 text-xs font-semibold tracking-[0.1em] uppercase font-mono text-slate-500">직급</th>
+                  <th className="pb-2.5 pr-4 text-xs font-semibold tracking-[0.1em] uppercase font-mono text-slate-500">아이디</th>
+                  <th className="pb-2.5 pr-4 text-xs font-semibold tracking-[0.1em] uppercase font-mono text-slate-500">권한</th>
+                  <th className="pb-2.5 pr-4 text-xs font-semibold tracking-[0.1em] uppercase font-mono text-slate-500">상태</th>
+                  <th className="pb-2.5 pr-4 text-xs font-semibold tracking-[0.1em] uppercase font-mono text-slate-500">마지막 로그인</th>
+                  <th className="pb-2.5 pr-4 text-xs font-semibold tracking-[0.1em] uppercase font-mono text-slate-500">비밀번호</th>
+                  <th className="pb-2.5 text-xs font-semibold tracking-[0.1em] uppercase font-mono text-slate-500">관리</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-800">
+              <tbody className="divide-y divide-white/[0.05]">
                 {list.map(u => {
-                  const rm = ROLE_META[u.role] ?? ROLE_META.staff
                   return (
-                    <tr key={u.id} className="hover:bg-gray-800/40 transition-colors">
+                    <tr key={u.id} className="transition-colors hover:bg-white/[0.02]">
                       <td className="py-3 pr-4 text-white font-medium">{u.display_name}</td>
                       <td className="py-3 pr-4">
                         <PositionSelect user={u} onSave={(pos) => changePosition(u, pos)} />
                       </td>
-                      <td className="py-3 pr-4 font-mono text-gray-400 text-xs">@{u.username}</td>
+                      <td className="py-3 pr-4 font-mono text-slate-400 text-xs">@{u.username}</td>
                       <td className="py-3 pr-4">
                         <select value={u.role} onChange={e => changeRole(u, e.target.value)}
-                          className="bg-gray-800 border border-gray-700 rounded-lg px-2 py-1 text-xs text-gray-300
-                                     focus:outline-none focus:ring-1 focus:ring-blue-500">
+                          className="wms-select py-1 px-2 text-xs rounded-lg">
                           <option value="staff">직원</option>
                           <option value="admin">관리자</option>
                         </select>
@@ -271,13 +270,14 @@ export default function AdminPage() {
                         <button onClick={() => toggleActive(u)}
                           className={`text-xs px-3 py-1 rounded-full font-semibold transition-colors ${
                             u.is_active
-                              ? 'bg-green-900/40 text-green-400 border border-green-800 hover:bg-red-900/40 hover:text-red-400 hover:border-red-800'
-                              : 'bg-gray-800 text-gray-500 border border-gray-700 hover:bg-green-900/40 hover:text-green-400 hover:border-green-800'
-                          }`}>
+                              ? 'bg-emerald-900/30 text-emerald-400 border border-emerald-800/60 hover:bg-red-900/30 hover:text-red-400 hover:border-red-800/60'
+                              : 'text-slate-500 border border-white/10 hover:bg-emerald-900/30 hover:text-emerald-400 hover:border-emerald-800/60'
+                          }`}
+                          style={{background: u.is_active ? undefined : 'rgba(255,255,255,0.04)'}}>
                           {u.is_active ? '활성' : '비활성'}
                         </button>
                       </td>
-                      <td className="py-3 pr-4 text-xs text-gray-500">
+                      <td className="py-3 pr-4 text-xs text-slate-500">
                         {u.last_login_at ? new Date(u.last_login_at).toLocaleString('ko-KR') : '—'}
                       </td>
                       <td className="py-3 pr-4">
@@ -285,17 +285,16 @@ export default function AdminPage() {
                           <input type="password" placeholder="새 비밀번호"
                             value={resetPw[u.id] ?? ''}
                             onChange={e => setResetPw(p => ({ ...p, [u.id]: e.target.value }))}
-                            className="w-28 bg-gray-800 border border-gray-700 rounded px-2 py-1 text-xs text-white
-                                       focus:outline-none focus:ring-1 focus:ring-blue-500" />
+                            className="wms-input py-1 px-2 text-xs rounded-lg w-28" />
                           <button onClick={() => handleResetPw(u)}
-                            className="text-xs px-2 py-1 rounded bg-blue-700 hover:bg-blue-600 text-white transition-colors">
+                            className="wms-btn wms-btn-primary text-xs py-1 px-2">
                             변경
                           </button>
                         </div>
                       </td>
                       <td className="py-3">
                         <button onClick={() => reject(u)}
-                          className="text-xs text-gray-600 hover:text-red-400 transition-colors px-2 py-1">
+                          className="text-xs text-slate-600 hover:text-red-400 transition-colors px-2 py-1">
                           삭제
                         </button>
                       </td>
@@ -318,8 +317,7 @@ function PositionSelect({ user, onSave }) {
     <select
       value={user.position || '사용자'}
       onChange={e => onSave(e.target.value)}
-      className="bg-gray-800 border border-gray-700 rounded-lg px-2 py-1 text-xs text-gray-300
-                 focus:outline-none focus:ring-1 focus:ring-blue-500 min-w-[70px]"
+      className="wms-select py-1 px-2 text-xs rounded-lg min-w-[70px]"
     >
       {POSITIONS.map(p => <option key={p} value={p}>{p}</option>)}
     </select>

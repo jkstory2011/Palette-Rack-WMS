@@ -163,17 +163,17 @@ function ZoneTab() {
             )}
             <table className="w-full text-sm">
               <thead>
-                <tr className="text-xs text-gray-500 border-b border-gray-700 text-left">
+                <tr className="text-left">
                   <th className="pb-2 w-8">
                     <input type="checkbox" ref={allCheckRef}
                       checked={zones.length > 0 && selectedIds.size === zones.length}
                       onChange={toggleAll} className="w-4 h-4 accent-blue-500 cursor-pointer" />
                   </th>
-                  <th className="pb-2">코드</th><th className="pb-2">이름</th>
-                  <th className="pb-2 text-center">로케이션 수</th><th className="pb-2" />
+                  <th className="pb-2.5 wms-label">코드</th><th className="pb-2.5 wms-label">이름</th>
+                  <th className="pb-2.5 wms-label text-center">로케이션 수</th><th className="pb-2.5" />
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-800">
+              <tbody className="divide-y divide-white/[0.06]">
                 {zones.map(z => editingId === z.id ? (
                   <tr key={z.id} className="bg-blue-950/30">
                     <td className="py-2" />
@@ -199,7 +199,7 @@ function ZoneTab() {
                   </tr>
                 ) : (
                   <tr key={z.id}
-                    className={`hover:bg-gray-800/40 transition-colors group ${selectedIds.has(z.id) ? 'bg-blue-950/20' : ''}`}>
+                    className={`hover:bg-white/[0.025] transition-colors group ${selectedIds.has(z.id) ? 'bg-blue-950/20' : ''}`}>
                     <td className="py-3" onClick={e => e.stopPropagation()}>
                       <input type="checkbox" checked={selectedIds.has(z.id)} onChange={() => toggleSelect(z.id)}
                         className="w-4 h-4 accent-blue-500 cursor-pointer" />
@@ -516,19 +516,19 @@ function PalletLocationTab() {
                 )}
                 <table className="w-full text-sm">
                   <thead>
-                    <tr className="text-xs text-gray-500 border-b border-gray-700 text-left">
+                    <tr className="text-left">
                       <th className="pb-2 w-8">
                         <input type="checkbox" ref={allCheckRef}
                           checked={locations.length > 0 && selectedIds.size === locations.length}
                           onChange={toggleAll} className="w-4 h-4 accent-blue-500 cursor-pointer" />
                       </th>
-                      <th className="pb-2">코드</th><th className="pb-2 text-center">X(열)</th>
-                      <th className="pb-2 text-center">Y(행)</th><th className="pb-2">통로</th>
-                      <th className="pb-2 text-center">파렛트</th><th className="pb-2 text-center">상태</th>
-                      <th className="pb-2" />
+                      <th className="pb-2.5 wms-label">코드</th><th className="pb-2.5 wms-label text-center">X(열)</th>
+                      <th className="pb-2.5 wms-label text-center">Y(행)</th><th className="pb-2.5 wms-label">통로</th>
+                      <th className="pb-2.5 wms-label text-center">파렛트</th><th className="pb-2.5 wms-label text-center">상태</th>
+                      <th className="pb-2.5" />
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-gray-800">
+                  <tbody className="divide-y divide-white/[0.06]">
                     {locations.map(l => editingId === l.id ? (
                       <tr key={l.id} className="bg-blue-950/30">
                         <td className="py-1.5" />
@@ -570,7 +570,7 @@ function PalletLocationTab() {
                       </tr>
                     ) : (
                       <tr key={l.id}
-                        className={`hover:bg-gray-800/40 transition-colors group ${selectedIds.has(l.id) ? 'bg-blue-950/20' : ''}`}>
+                        className={`hover:bg-white/[0.025] transition-colors group ${selectedIds.has(l.id) ? 'bg-blue-950/20' : ''}`}>
                         <td className="py-2.5">
                           <input type="checkbox" checked={selectedIds.has(l.id)} onChange={() => toggleSelect(l.id)}
                             className="w-4 h-4 accent-blue-500 cursor-pointer" />
@@ -968,20 +968,20 @@ function ProductLocationTab() {
             )}
           <table className="w-full text-sm">
             <thead>
-              <tr className="text-xs text-gray-500 border-b border-gray-700 text-left">
+              <tr className="text-left">
                 <th className="pb-2 w-8">
                   <input type="checkbox" ref={allCheckRef}
                     checked={locs.length > 0 && selectedIds.size === locs.length}
                     onChange={toggleAll} className="w-4 h-4 accent-blue-500 cursor-pointer" />
                 </th>
                 <th className="pb-2 w-8" />
-                <th className="pb-2">코드</th>
-                <th className="pb-2">이름</th>
-                <th className="pb-2">비고</th>
-                <th className="pb-2" />
+                <th className="pb-2.5 wms-label">코드</th>
+                <th className="pb-2.5 wms-label">이름</th>
+                <th className="pb-2.5 wms-label">비고</th>
+                <th className="pb-2.5" />
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-800">
+            <tbody className="divide-y divide-white/[0.06]">
               {locs.flatMap(loc => {
                 const isEditing  = editingId  === loc.id
                 const isExpanded = expandedId === loc.id
@@ -1014,7 +1014,7 @@ function ProductLocationTab() {
                     </tr>
                   ) : (
                     <tr key={`row-${loc.id}`}
-                      className={`hover:bg-gray-800/40 transition-colors group ${selectedIds.has(loc.id) ? 'bg-blue-950/20' : ''}`}>
+                      className={`hover:bg-white/[0.025] transition-colors group ${selectedIds.has(loc.id) ? 'bg-blue-950/20' : ''}`}>
                       <td className="py-3 pl-1">
                         <input type="checkbox" checked={selectedIds.has(loc.id)} onChange={() => toggleSelect(loc.id)}
                           className="w-4 h-4 accent-blue-500 cursor-pointer" />
@@ -1167,12 +1167,12 @@ function Modal({ title, onClose, children, wide }) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4"
       style={{ backgroundColor: 'rgba(0,0,0,0.8)' }} onClick={onClose}>
-      <div className={`bg-gray-900 border border-gray-700 rounded-2xl shadow-2xl
-                       flex flex-col max-h-[92vh] ${wide ? 'w-full max-w-3xl' : 'w-full max-w-lg'}`}
-        onClick={e => e.stopPropagation()}>
-        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-700 shrink-0">
+      <div className={`rounded-2xl shadow-2xl flex flex-col max-h-[92vh] ${wide ? 'w-full max-w-3xl' : 'w-full max-w-lg'}`}
+           style={{background:'linear-gradient(135deg,rgba(15,20,40,0.98) 0%,rgba(8,12,24,0.99) 100%)',border:'1px solid rgba(255,255,255,0.10)'}}
+           onClick={e => e.stopPropagation()}>
+        <div className="flex items-center justify-between px-6 py-4 shrink-0" style={{borderBottom:'1px solid rgba(255,255,255,0.08)'}}>
           <h2 className="text-base font-bold text-white">{title}</h2>
-          <button onClick={onClose} className="text-gray-500 hover:text-white text-xl leading-none">✕</button>
+          <button onClick={onClose} className="text-slate-500 hover:text-white text-xl leading-none">✕</button>
         </div>
         <div className="overflow-y-auto flex-1 px-6 py-5">{children}</div>
       </div>
@@ -1181,13 +1181,13 @@ function Modal({ title, onClose, children, wide }) {
 }
 
 function ModalFooter({ children }) {
-  return <div className="flex justify-end gap-3 pt-3 border-t border-gray-800 mt-3">{children}</div>
+  return <div className="flex justify-end gap-3 pt-3 mt-3" style={{borderTop:'1px solid rgba(255,255,255,0.08)'}}>{children}</div>
 }
 
 function Field({ label, children, className = '' }) {
   return (
     <div className={`flex flex-col gap-1.5 ${className}`}>
-      <label className="text-xs font-medium text-gray-400">{label}</label>
+      <label className="wms-label">{label}</label>
       {children}
     </div>
   )
@@ -1195,7 +1195,8 @@ function Field({ label, children, className = '' }) {
 
 function HintBox({ title, lines }) {
   return (
-    <div className="bg-gray-800/60 border border-gray-700 rounded-xl p-3 text-xs text-gray-400 space-y-1">
+    <div className="rounded-xl p-3 text-xs text-slate-400 space-y-1"
+      style={{background:'rgba(255,255,255,0.04)',border:'1px solid rgba(255,255,255,0.08)'}}>
       <p className="font-semibold text-gray-300">{title}</p>
       {lines.map((l, i) => <p key={i} className={i > 0 ? 'font-mono text-gray-500' : ''}>{l}</p>)}
     </div>
@@ -1209,14 +1210,15 @@ function PreviewTable({ headers, rows, validCount, total }) {
         미리보기 — 유효 <span className="text-green-400 font-bold">{validCount}</span>건 /
         오류 <span className="text-red-400">{total - validCount}</span>건
       </p>
-      <div className="border border-gray-700 rounded-xl overflow-hidden max-h-48 overflow-y-auto">
+      <div className="rounded-xl overflow-hidden max-h-48 overflow-y-auto"
+        style={{border:'1px solid rgba(255,255,255,0.08)'}}>
         <table className="w-full text-xs">
-          <thead className="bg-gray-800 sticky top-0">
-            <tr className="text-gray-400">
-              {headers.map((h, i) => <th key={i} className="px-3 py-2 text-left">{h}</th>)}
+          <thead className="sticky top-0" style={{background:'rgba(15,20,40,0.98)'}}>
+            <tr style={{borderBottom:'1px solid rgba(255,255,255,0.08)'}}>
+              {headers.map((h, i) => <th key={i} className="px-3 py-2 text-left wms-label">{h}</th>)}
             </tr>
           </thead>
-          <tbody className="divide-y divide-gray-800">
+          <tbody className="divide-y divide-white/[0.06]">
             {rows.map((cells, i) => (
               <tr key={i}>
                 {cells.map((cell, j) => <td key={j} className="px-3 py-2 text-gray-300">{cell}</td>)}
@@ -1239,13 +1241,7 @@ function ResultBox({ success, skipped, errors = [] }) {
   )
 }
 
-const inputCls    = `w-full bg-gray-800 border border-gray-600 rounded-xl px-3 py-2.5 text-white
-                     text-sm placeholder-gray-600 focus:outline-none focus:ring-2
-                     focus:ring-blue-500/50 focus:border-blue-500`
-const selectCls   = `w-full bg-gray-800 border border-gray-600 rounded-xl px-3 py-2.5 text-white
-                     text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500`
-const textareaCls = `w-full bg-gray-800 border border-gray-600 rounded-xl px-4 py-3 text-white
-                     text-sm placeholder-gray-600 font-mono resize-none focus:outline-none
-                     focus:ring-2 focus:ring-blue-500/50`
-const btnCls      = `px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-sm
-                     font-semibold transition-colors disabled:opacity-40`
+const inputCls    = 'wms-input'
+const selectCls   = 'wms-select'
+const textareaCls = 'wms-input font-mono resize-none'
+const btnCls      = 'wms-btn wms-btn-primary'

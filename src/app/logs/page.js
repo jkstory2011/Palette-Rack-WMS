@@ -100,19 +100,19 @@ function InboundLogs() {
     >
       <table className="w-full text-sm">
         <thead>
-          <tr className="text-xs text-gray-500 border-b border-gray-700 text-left">
-            <th className="pb-2 font-medium">입고 일시</th>
-            <th className="pb-2 font-medium">파렛트 코드</th>
-            <th className="pb-2 font-medium">로케이션</th>
-            <th className="pb-2 font-medium text-center">슬롯</th>
-            <th className="pb-2 font-medium">적재 상품</th>
+          <tr className="text-left" style={{borderBottom:'1px solid rgba(255,255,255,0.08)'}}>
+            <th className="pb-2.5 text-xs font-semibold tracking-[0.1em] uppercase font-mono text-slate-500">입고 일시</th>
+            <th className="pb-2.5 text-xs font-semibold tracking-[0.1em] uppercase font-mono text-slate-500">파렛트 코드</th>
+            <th className="pb-2.5 text-xs font-semibold tracking-[0.1em] uppercase font-mono text-slate-500">로케이션</th>
+            <th className="pb-2.5 text-xs font-semibold tracking-[0.1em] uppercase font-mono text-slate-500 text-center">슬롯</th>
+            <th className="pb-2.5 text-xs font-semibold tracking-[0.1em] uppercase font-mono text-slate-500">적재 상품</th>
           </tr>
         </thead>
-        <tbody className="divide-y divide-gray-800">
+        <tbody className="divide-y divide-white/[0.06]">
           {filtered.map((r) => {
             const items = r.pallets?.pallet_items ?? []
             return (
-              <tr key={r.id} className="hover:bg-gray-800/40 transition-colors align-top">
+              <tr key={r.id} className="hover:bg-white/[0.025] transition-colors align-top">
                 <td className="py-3 text-gray-500 text-xs whitespace-nowrap">
                   {fmtDt(r.created_at)}
                 </td>
@@ -226,16 +226,16 @@ function OutboundLogs() {
     >
       <table className="w-full text-sm">
         <thead>
-          <tr className="text-xs text-gray-500 border-b border-gray-700 text-left">
-            <th className="pb-2 font-medium">출고 일시</th>
-            <th className="pb-2 font-medium">파렛트 코드</th>
-            <th className="pb-2 font-medium">출고 로케이션</th>
-            <th className="pb-2 font-medium text-center">슬롯</th>
-            <th className="pb-2 font-medium">출고 상품</th>
-            <th className="pb-2 font-medium text-right">입고→출고</th>
+          <tr className="text-left" style={{borderBottom:'1px solid rgba(255,255,255,0.08)'}}>
+            <th className="pb-2.5 text-xs font-semibold tracking-[0.1em] uppercase font-mono text-slate-500">출고 일시</th>
+            <th className="pb-2.5 text-xs font-semibold tracking-[0.1em] uppercase font-mono text-slate-500">파렛트 코드</th>
+            <th className="pb-2.5 text-xs font-semibold tracking-[0.1em] uppercase font-mono text-slate-500">출고 로케이션</th>
+            <th className="pb-2.5 text-xs font-semibold tracking-[0.1em] uppercase font-mono text-slate-500 text-center">슬롯</th>
+            <th className="pb-2.5 text-xs font-semibold tracking-[0.1em] uppercase font-mono text-slate-500">출고 상품</th>
+            <th className="pb-2.5 text-xs font-semibold tracking-[0.1em] uppercase font-mono text-slate-500 text-right">입고→출고</th>
           </tr>
         </thead>
-        <tbody className="divide-y divide-gray-800">
+        <tbody className="divide-y divide-white/[0.06]">
           {filtered.map((r) => {
             const items   = r.pallets?.pallet_items ?? []
             const daysIn  = r.pallets?.inbound_at
@@ -245,7 +245,7 @@ function OutboundLogs() {
               : null
 
             return (
-              <tr key={r.id} className="hover:bg-gray-800/40 transition-colors align-top">
+              <tr key={r.id} className="hover:bg-white/[0.025] transition-colors align-top">
                 <td className="py-3 text-gray-500 text-xs whitespace-nowrap">
                   {fmtDt(r.created_at)}
                 </td>
@@ -306,28 +306,27 @@ function LogShell({
       {/* 필터 바 */}
       <div className="wms-card flex flex-wrap items-end gap-3">
         <div className="flex flex-col gap-1">
-          <label className="text-xs text-gray-500">시작일</label>
+          <label className="wms-label">시작일</label>
           <input type="date" value={dateFrom}
             onChange={(e) => setDateFrom(e.target.value)}
             className={dateCls} />
         </div>
         <div className="flex flex-col gap-1">
-          <label className="text-xs text-gray-500">종료일</label>
+          <label className="wms-label">종료일</label>
           <input type="date" value={dateTo}
             onChange={(e) => setDateTo(e.target.value)}
             className={dateCls} />
         </div>
         <div className="flex flex-col gap-1 flex-1 min-w-[160px]">
-          <label className="text-xs text-gray-500">파렛트·로케이션·상품 검색</label>
+          <label className="wms-label">파렛트·로케이션·상품 검색</label>
           <input
             type="search" placeholder="검색어 입력..."
             value={keyword} onChange={(e) => setKeyword(e.target.value)}
             className={dateCls} />
         </div>
         <button onClick={onRefresh}
-          className="px-4 py-2.5 rounded-xl bg-gray-700 hover:bg-gray-600
-                     text-white text-sm transition-colors self-end">
-          새로고침
+          className="wms-btn wms-btn-ghost self-end">
+          ↻ 새로고침
         </button>
       </div>
 
@@ -364,7 +363,8 @@ function LogShell({
 function SlotChip({ tier, side }) {
   if (!tier || !side) return <span className="text-gray-700 text-xs">—</span>
   return (
-    <span className="text-[10px] bg-gray-700 text-gray-300 px-2 py-1 rounded-lg font-mono">
+    <span className="text-[10px] font-mono px-2 py-1 rounded-lg"
+      style={{background:'rgba(255,255,255,0.07)',border:'1px solid rgba(255,255,255,0.12)',color:'rgba(148,163,184,1)'}}>
       {tier}단 {side === 'L' ? '좌' : '우'}
     </span>
   )
@@ -386,5 +386,4 @@ function fmtDt(iso) {
   })
 }
 
-const dateCls = `bg-gray-800 border border-gray-600 rounded-xl px-3 py-2.5 text-white text-sm
-                 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500`
+const dateCls = 'wms-input py-2.5'

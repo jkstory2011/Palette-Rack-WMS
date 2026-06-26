@@ -368,23 +368,25 @@ function ActionModal({ order, action, onClose, onConfirm }) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4"
       style={{ backgroundColor: 'rgba(0,0,0,0.82)' }} onClick={onClose}>
-      <div className="bg-gray-900 border border-gray-700 rounded-2xl w-full max-w-md shadow-2xl"
-        onClick={e => e.stopPropagation()}>
+      <div className="rounded-2xl w-full max-w-md shadow-2xl"
+           style={{background:'linear-gradient(135deg,rgba(15,20,40,0.98) 0%,rgba(8,12,24,0.99) 100%)',border:'1px solid rgba(255,255,255,0.10)'}}
+           onClick={e => e.stopPropagation()}>
 
         {/* 헤더 */}
-        <div className="px-6 py-5 border-b border-gray-700">
+        <div className="px-6 py-5" style={{borderBottom:'1px solid rgba(255,255,255,0.08)'}}>
           <div className="flex items-center gap-3">
             <span className="text-2xl">{meta.emoji}</span>
             <div>
               <h2 className="text-white font-bold text-lg">{meta.label} 처리</h2>
-              <p className="text-gray-400 text-xs mt-0.5">
+              <p className="text-slate-400 text-xs mt-0.5">
                 {typeLabel} 오더 · <span className="font-mono text-blue-400">{order.order_no}</span>
               </p>
             </div>
           </div>
 
           {/* 오더 요약 */}
-          <div className="mt-3 bg-gray-800 rounded-xl px-4 py-3 text-xs space-y-1">
+          <div className="mt-3 rounded-xl px-4 py-3 text-xs space-y-1"
+            style={{background:'rgba(255,255,255,0.04)',border:'1px solid rgba(255,255,255,0.07)'}}>
             <div className="flex gap-2">
               <span className="text-gray-500 w-12">상태</span>
               <span className="text-white">{STATUS_META[order.status]?.label ?? order.status}</span>
@@ -449,19 +451,14 @@ function ActionModal({ order, action, onClose, onConfirm }) {
                 onChange={e => setReason(e.target.value)}
                 placeholder="직접 사유를 입력하거나 위에서 선택하세요..."
                 rows={3}
-                className="w-full bg-gray-800 border border-gray-600 rounded-xl px-4 py-3
-                           text-white text-sm placeholder-gray-600 resize-none
-                           focus:outline-none focus:ring-2 focus:ring-blue-500/50" />
+                className="wms-input resize-none" />
             )}
           </div>
         )}
 
         {/* 하단 버튼 */}
         <div className="px-6 pb-5 flex gap-2">
-          <button onClick={onClose}
-            className="flex-1 py-3 rounded-xl bg-gray-800 hover:bg-gray-700 text-gray-300 font-semibold text-sm transition-colors">
-            취소
-          </button>
+          <button onClick={onClose} className="flex-1 wms-btn wms-btn-ghost">취소</button>
           <button onClick={handleConfirm} disabled={loading}
             className={`flex-1 py-3 rounded-xl text-white font-bold text-sm transition-colors disabled:opacity-40 ${dangerCls}`}>
             {loading ? '처리 중...' : `${meta.emoji} ${meta.label} 확인`}
@@ -581,9 +578,7 @@ function LogsTab() {
           <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 text-sm">🔍</span>
           <input type="search" placeholder="로케이션, 파렛트 코드, 상품명 검색..."
             value={search} onChange={e => setSearch(e.target.value)}
-            className="w-full bg-gray-800 border border-gray-600 rounded-xl pl-10 pr-4 py-3
-                       text-white text-sm placeholder-gray-500 focus:outline-none
-                       focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500" />
+            className="wms-input pl-10" />
         </div>
         {!loading && (
           <div className="flex items-center gap-4 text-xs text-gray-500">
@@ -605,16 +600,16 @@ function LogsTab() {
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="text-left text-xs text-gray-500 border-b border-gray-700 bg-gray-900/60">
-                  <th className="px-5 py-3 font-medium w-28">유형</th>
-                  <th className="px-5 py-3 font-medium">로케이션</th>
-                  <th className="px-5 py-3 font-medium">슬롯</th>
-                  <th className="px-5 py-3 font-medium">파렛트</th>
-                  <th className="px-5 py-3 font-medium">상품 / 수량</th>
-                  <th className="px-5 py-3 font-medium text-right">작업일시</th>
+                <tr className="text-left" style={{borderBottom:'1px solid rgba(255,255,255,0.08)',background:'rgba(255,255,255,0.02)'}}>
+                  <th className="px-5 py-3 text-xs font-semibold tracking-[0.1em] uppercase font-mono text-slate-500 w-28">유형</th>
+                  <th className="px-5 py-3 text-xs font-semibold tracking-[0.1em] uppercase font-mono text-slate-500">로케이션</th>
+                  <th className="px-5 py-3 text-xs font-semibold tracking-[0.1em] uppercase font-mono text-slate-500">슬롯</th>
+                  <th className="px-5 py-3 text-xs font-semibold tracking-[0.1em] uppercase font-mono text-slate-500">파렛트</th>
+                  <th className="px-5 py-3 text-xs font-semibold tracking-[0.1em] uppercase font-mono text-slate-500">상품 / 수량</th>
+                  <th className="px-5 py-3 text-xs font-semibold tracking-[0.1em] uppercase font-mono text-slate-500 text-right">작업일시</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-800/80">
+              <tbody className="divide-y divide-white/[0.05]">
                 {filtered.map(log => (
                   <tr key={log.uid} onClick={() => setSelected(log)}
                     className="cursor-pointer transition-colors hover:bg-blue-600/10">
@@ -711,17 +706,15 @@ function WorkOrderDetailModal({ log, onClose }) {
       <div className="w-full max-w-lg shadow-2xl rounded-2xl overflow-hidden flex flex-col max-h-[90vh]"
         onClick={e => e.stopPropagation()}>
 
-        <div className="no-print bg-gray-900 border-b border-gray-700 px-5 py-4 flex items-center justify-between shrink-0">
+        <div className="no-print px-5 py-4 flex items-center justify-between shrink-0"
+          style={{background:'rgba(15,20,40,0.98)',borderBottom:'1px solid rgba(255,255,255,0.08)'}}>
           <div className="flex items-center gap-2">
             <span className="text-lg">{typeEmoji}</span>
             <span className="text-white font-bold">{typeLabel} 작업지시서</span>
           </div>
           <div className="flex items-center gap-2">
-            <button onClick={handlePrint}
-              className="flex items-center gap-2 px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-sm font-bold transition-colors">
-              🖨️ 출력
-            </button>
-            <button onClick={onClose} className="text-gray-400 hover:text-white text-2xl leading-none ml-2">✕</button>
+            <button onClick={handlePrint} className="wms-btn wms-btn-primary">🖨️ 출력</button>
+            <button onClick={onClose} className="text-slate-400 hover:text-white text-2xl leading-none ml-2">✕</button>
           </div>
         </div>
 
@@ -806,15 +799,10 @@ function WorkOrderDetailModal({ log, onClose }) {
           </div>
         </div>
 
-        <div className="no-print bg-gray-900 border-t border-gray-700 px-5 py-3 flex justify-end gap-2 shrink-0">
-          <button onClick={handlePrint}
-            className="px-6 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-sm transition-colors">
-            🖨️ 인쇄
-          </button>
-          <button onClick={onClose}
-            className="px-6 py-2.5 rounded-xl bg-gray-700 hover:bg-gray-600 text-white text-sm font-semibold transition-colors">
-            닫기
-          </button>
+        <div className="no-print px-5 py-3 flex justify-end gap-2 shrink-0"
+          style={{background:'rgba(15,20,40,0.98)',borderTop:'1px solid rgba(255,255,255,0.08)'}}>
+          <button onClick={handlePrint} className="wms-btn wms-btn-primary">🖨️ 인쇄</button>
+          <button onClick={onClose} className="wms-btn wms-btn-ghost">닫기</button>
         </div>
       </div>
     </div>
@@ -871,17 +859,15 @@ function OrderPrintModal({ order, onClose }) {
         onClick={e => e.stopPropagation()}>
 
         {/* 모달 헤더 */}
-        <div className="no-print bg-gray-900 border-b border-gray-700 px-5 py-4 flex items-center justify-between shrink-0">
+        <div className="no-print px-5 py-4 flex items-center justify-between shrink-0"
+          style={{background:'rgba(15,20,40,0.98)',borderBottom:'1px solid rgba(255,255,255,0.08)'}}>
           <div className="flex items-center gap-2">
             <span className="text-lg">{typeEmoji}</span>
             <span className="text-white font-bold">{typeLabel} 작업지시서 출력</span>
           </div>
           <div className="flex items-center gap-2">
-            <button onClick={handlePrint}
-              className="flex items-center gap-2 px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-sm font-bold transition-colors">
-              🖨️ 출력
-            </button>
-            <button onClick={onClose} className="text-gray-400 hover:text-white text-2xl leading-none ml-2">✕</button>
+            <button onClick={handlePrint} className="wms-btn wms-btn-primary">🖨️ 출력</button>
+            <button onClick={onClose} className="text-slate-400 hover:text-white text-2xl leading-none ml-2">✕</button>
           </div>
         </div>
 
@@ -991,15 +977,10 @@ function OrderPrintModal({ order, onClose }) {
         </div>
 
         {/* 모달 하단 */}
-        <div className="no-print bg-gray-900 border-t border-gray-700 px-5 py-3 flex justify-end gap-2 shrink-0">
-          <button onClick={handlePrint}
-            className="px-6 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-sm transition-colors">
-            🖨️ 인쇄
-          </button>
-          <button onClick={onClose}
-            className="px-6 py-2.5 rounded-xl bg-gray-700 hover:bg-gray-600 text-white text-sm font-semibold transition-colors">
-            닫기
-          </button>
+        <div className="no-print px-5 py-3 flex justify-end gap-2 shrink-0"
+          style={{background:'rgba(15,20,40,0.98)',borderTop:'1px solid rgba(255,255,255,0.08)'}}>
+          <button onClick={handlePrint} className="wms-btn wms-btn-primary">🖨️ 인쇄</button>
+          <button onClick={onClose} className="wms-btn wms-btn-ghost">닫기</button>
         </div>
       </div>
     </div>

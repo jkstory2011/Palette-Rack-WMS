@@ -20,26 +20,132 @@
 }
 
 @layer components {
-  /* 가동률 상태 배지 */
+  /* ── 가동률 상태 배지 ── */
   .rack-empty   { @apply bg-green-500 text-white; }
   .rack-partial { @apply bg-amber-500 text-white; }
   .rack-full    { @apply bg-red-500 text-white; }
   .rack-locked  { @apply bg-gray-600 text-gray-400; }
 
-  /* 현장용 기본 카드 — 프리미엄 글래스 */
+  /* ── 카드 (조감도와 동일한 glass 스타일) ── */
   .wms-card {
-    @apply rounded-xl p-4;
+    @apply rounded-2xl p-5;
     background: linear-gradient(135deg, rgba(15,20,40,0.92) 0%, rgba(8,12,24,0.96) 100%);
     border: 1px solid rgba(255,255,255,0.07);
     box-shadow: inset 0 1px 0 rgba(255,255,255,0.04);
   }
 
-  /* 조감도 프리미엄 카드 */
+  /* 조감도 프리미엄 카드 (조감도 전용) */
   .dash-card {
     background: linear-gradient(135deg, rgba(15,20,40,0.92) 0%, rgba(8,12,24,0.96) 100%);
     border-radius: 16px;
     box-shadow: inset 0 1px 0 rgba(255,255,255,0.04);
   }
+
+  /* ── 입력 필드 ── */
+  .wms-input {
+    @apply w-full rounded-xl px-4 py-3 text-white text-sm placeholder-slate-600
+           focus:outline-none transition-colors;
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(255,255,255,0.10);
+  }
+  .wms-input:focus {
+    background: rgba(255,255,255,0.06);
+    border-color: rgba(255,255,255,0.20);
+    box-shadow: 0 0 0 1px rgba(255,255,255,0.12);
+  }
+  .wms-select {
+    @apply w-full rounded-xl px-4 py-3 text-white text-sm
+           focus:outline-none transition-colors;
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(255,255,255,0.10);
+  }
+  .wms-select:focus {
+    background: rgba(255,255,255,0.06);
+    border-color: rgba(255,255,255,0.20);
+  }
+
+  /* ── 버튼 ── */
+  .wms-btn {
+    @apply rounded-xl font-semibold text-sm transition-colors disabled:opacity-40
+           disabled:cursor-not-allowed;
+    min-height: 44px;
+    padding: 0.625rem 1.25rem;
+  }
+  .wms-btn-primary {
+    background: rgba(79,70,229,0.8);
+    color: white;
+    border: 1px solid rgba(99,102,241,0.4);
+  }
+  .wms-btn-primary:hover:not(:disabled) { background: rgba(79,70,229,1); }
+  .wms-btn-success {
+    background: rgba(16,185,129,0.15);
+    color: #34d399;
+    border: 1px solid rgba(16,185,129,0.3);
+  }
+  .wms-btn-success:hover:not(:disabled) { background: rgba(16,185,129,0.25); }
+  .wms-btn-warning {
+    background: rgba(245,158,11,0.15);
+    color: #fbbf24;
+    border: 1px solid rgba(245,158,11,0.3);
+  }
+  .wms-btn-warning:hover:not(:disabled) { background: rgba(245,158,11,0.25); }
+  .wms-btn-danger {
+    background: rgba(239,68,68,0.12);
+    color: #f87171;
+    border: 1px solid rgba(239,68,68,0.28);
+  }
+  .wms-btn-danger:hover:not(:disabled) { background: rgba(239,68,68,0.22); }
+  .wms-btn-ghost {
+    background: rgba(255,255,255,0.04);
+    color: rgba(148,163,184,1);
+    border: 1px solid rgba(255,255,255,0.08);
+  }
+  .wms-btn-ghost:hover:not(:disabled) { background: rgba(255,255,255,0.08); color: white; }
+
+  /* ── 섹션 라벨 ── */
+  .wms-label {
+    @apply text-xs font-semibold tracking-[0.14em] uppercase font-mono;
+    color: rgba(100,116,139,1);
+  }
+
+  /* ── 인라인 태그/배지 ── */
+  .wms-tag {
+    @apply text-xs px-2.5 py-0.5 rounded-full font-medium;
+    background: rgba(255,255,255,0.06);
+    border: 1px solid rgba(255,255,255,0.10);
+    color: rgba(148,163,184,1);
+  }
+  .wms-tag-blue  { background: rgba(59,130,246,0.12); border-color: rgba(59,130,246,0.25); color: #93c5fd; }
+  .wms-tag-green { background: rgba(16,185,129,0.12); border-color: rgba(16,185,129,0.25); color: #6ee7b7; }
+  .wms-tag-amber { background: rgba(245,158,11,0.12); border-color: rgba(245,158,11,0.25); color: #fcd34d; }
+  .wms-tag-red   { background: rgba(239,68,68,0.12);  border-color: rgba(239,68,68,0.25);  color: #fca5a5; }
+
+  /* ── 구분선 ── */
+  .wms-divider { border-color: rgba(255,255,255,0.08); }
+
+  /* ── 알림 메시지 ── */
+  .wms-alert-error {
+    @apply text-sm text-red-400 rounded-xl px-4 py-3;
+    background: rgba(239,68,68,0.08);
+    border: 1px solid rgba(239,68,68,0.25);
+  }
+  .wms-alert-success {
+    @apply text-sm text-emerald-400 rounded-xl px-4 py-3;
+    background: rgba(16,185,129,0.08);
+    border: 1px solid rgba(16,185,129,0.25);
+  }
+  .wms-alert-info {
+    @apply text-sm text-blue-400 rounded-xl px-4 py-3;
+    background: rgba(59,130,246,0.08);
+    border: 1px solid rgba(59,130,246,0.25);
+  }
+
+  /* ── 테이블 ── */
+  .wms-table thead tr { border-bottom: 1px solid rgba(255,255,255,0.08); }
+  .wms-table thead th { @apply pb-2.5 text-xs font-semibold tracking-[0.1em] uppercase font-mono; color: rgba(100,116,139,1); }
+  .wms-table tbody { border-color: rgba(255,255,255,0.06); }
+  .wms-table tbody tr { border-bottom: 1px solid rgba(255,255,255,0.05); }
+  .wms-table tbody tr:hover { background: rgba(255,255,255,0.02); }
   .dash-zone-empty {
     border: 1px solid rgba(52,211,153,0.2);
     box-shadow: 0 0 24px rgba(52,211,153,0.07), inset 0 1px 0 rgba(255,255,255,0.03);
