@@ -11,10 +11,10 @@ export default function LogsPage() {
 
   return (
     <div className="max-w-5xl mx-auto space-y-5">
-      <h1 className="text-2xl font-bold text-white">입출고 이력 조회</h1>
+      <h1 className="text-3xl font-black text-white tracking-tight leading-none">입출고 이력 조회</h1>
 
       {/* 탭 */}
-      <div className="flex gap-2 border-b border-gray-700">
+      <div className="flex gap-2 border-b border-white/10">
         {[
           { key: TABS.IN,  label: '📥 입고 이력' },
           { key: TABS.OUT, label: '🚛 출고 이력' },
@@ -24,8 +24,8 @@ export default function LogsPage() {
             onClick={() => setTab(key)}
             className={`px-5 py-3 text-sm font-semibold rounded-t-xl transition-colors ${
               tab === key
-                ? 'bg-gray-800 text-white border-t border-l border-r border-gray-700'
-                : 'text-gray-500 hover:text-gray-300'
+                ? 'bg-white/[0.06] text-white border border-b-0 border-white/15'
+                : 'text-slate-500 hover:text-slate-300'
             }`}
           >
             {label}
@@ -349,9 +349,9 @@ function LogShell({
             </p>
           </div>
         ) : loading ? (
-          <p className="text-center text-gray-500 py-12 animate-pulse">불러오는 중...</p>
+          <p className="text-center text-slate-400 py-12 animate-pulse">불러오는 중...</p>
         ) : count === 0 ? (
-          <p className="text-center text-gray-600 py-12">해당 기간에 이력이 없습니다.</p>
+          <p className="text-center text-slate-500 py-12">해당 기간에 이력이 없습니다.</p>
         ) : (
           children
         )}

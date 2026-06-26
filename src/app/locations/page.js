@@ -10,9 +10,9 @@ export default function LocationsPage() {
 
   return (
     <div className="max-w-5xl mx-auto space-y-5">
-      <h1 className="text-2xl font-bold text-white">구역 / 로케이션 관리</h1>
+      <h1 className="text-3xl font-black text-white tracking-tight leading-none">구역 / 로케이션 관리</h1>
 
-      <div className="flex gap-2 border-b border-gray-700">
+      <div className="flex gap-2 border-b border-white/10">
         {[
           { key: TABS.ZONE,    label: '🏭 구역(Zone)' },
           { key: TABS.PALLET,  label: '📦 파렛트랙 로케이션' },
@@ -21,8 +21,8 @@ export default function LocationsPage() {
           <button key={key} onClick={() => setTab(key)}
             className={`px-5 py-3 text-sm font-semibold rounded-t-xl transition-colors ${
               tab === key
-                ? 'bg-gray-800 text-white border-t border-l border-r border-gray-700'
-                : 'text-gray-500 hover:text-gray-300'
+                ? 'bg-white/[0.06] text-white border border-b-0 border-white/15'
+                : 'text-slate-500 hover:text-slate-300'
             }`}>
             {label}
           </button>

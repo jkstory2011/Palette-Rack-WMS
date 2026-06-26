@@ -197,7 +197,7 @@ export default function ProductsPage() {
 
       {/* ── 오른쪽 메인 */}
       <div className="flex-1 min-w-0 space-y-6">
-        <h1 className="text-2xl font-bold text-white">상품 마스터</h1>
+        <h1 className="text-3xl font-black text-white tracking-tight leading-none">상품 마스터</h1>
 
         {/* ── 등록 폼 */}
         <form onSubmit={handleSubmit} className="wms-card space-y-4">

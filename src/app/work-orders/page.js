@@ -45,9 +45,9 @@ export default function WorkOrdersPage() {
 
   return (
     <div className="max-w-5xl mx-auto space-y-5">
-      <h1 className="text-2xl font-bold text-white">작업지시서</h1>
+      <h1 className="text-3xl font-black text-white tracking-tight leading-none">작업지시서</h1>
 
-      <div className="flex gap-2 border-b border-gray-700">
+      <div className="flex gap-2 border-b border-white/10">
         {[
           { key: 'orders', label: '📋 오더 관리' },
           { key: 'logs',   label: '📜 작업 이력' },
@@ -55,8 +55,8 @@ export default function WorkOrdersPage() {
           <button key={key} onClick={() => setTab(key)}
             className={`px-5 py-3 text-sm font-semibold rounded-t-xl transition-colors ${
               tab === key
-                ? 'bg-gray-800 text-white border-t border-l border-r border-gray-700'
-                : 'text-gray-500 hover:text-gray-300'
+                ? 'bg-white/[0.06] text-white border border-b-0 border-white/15'
+                : 'text-slate-500 hover:text-slate-300'
             }`}>
             {label}
           </button>
@@ -218,9 +218,9 @@ function OrdersTab() {
 
       {/* 오더 목록 */}
       {loading ? (
-        <p className="text-center text-gray-500 py-12 animate-pulse">불러오는 중...</p>
+        <p className="text-center text-slate-400 py-12 animate-pulse">불러오는 중...</p>
       ) : filtered.length === 0 ? (
-        <p className="text-center text-gray-600 py-12">해당 조건의 오더가 없습니다.</p>
+        <p className="text-center text-slate-500 py-12">해당 조건의 오더가 없습니다.</p>
       ) : (
         <div className="space-y-3">
           {filtered.map(order => {
@@ -598,9 +598,9 @@ function LogsTab() {
       {/* 테이블 */}
       <div className="wms-card p-0 overflow-hidden">
         {loading ? (
-          <p className="text-center text-gray-500 py-12 animate-pulse">불러오는 중...</p>
+          <p className="text-center text-slate-400 py-12 animate-pulse">불러오는 중...</p>
         ) : filtered.length === 0 ? (
-          <p className="text-center text-gray-600 py-12">해당 조건의 작업 이력이 없습니다.</p>
+          <p className="text-center text-slate-500 py-12">해당 조건의 작업 이력이 없습니다.</p>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">

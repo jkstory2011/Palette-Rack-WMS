@@ -118,12 +118,12 @@ export default function ZonePage() {
       {/* ── 헤더 */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div className="flex flex-col gap-1">
-          <Link href="/" className="text-gray-500 hover:text-white text-sm transition-colors">
+          <Link href="/" className="text-slate-500 hover:text-slate-300 text-sm transition-colors">
             ← 전체 조감도
           </Link>
-          <h1 className="text-2xl font-bold text-white">
+          <h1 className="text-3xl font-black text-white tracking-tight leading-none">
             {zone.code} 구역
-            <span className="text-gray-400 font-normal text-lg ml-2">— {zone.name}</span>
+            <span className="text-slate-400 font-normal text-xl ml-2">— {zone.name}</span>
           </h1>
         </div>
         <div className="flex items-center gap-6 text-sm">

@@ -19,15 +19,15 @@ export default function InboundPage() {
 
   return (
     <div className="max-w-4xl mx-auto space-y-5">
-      <h1 className="text-2xl font-bold text-white">입고 관리</h1>
+      <h1 className="text-3xl font-black text-white tracking-tight leading-none">입고 관리</h1>
 
-      <div className="flex gap-2 border-b border-gray-700">
+      <div className="flex gap-2 border-b border-white/10">
         {TABS.map(({ key, label }) => (
           <button key={key} onClick={() => setTab(key)}
             className={`px-5 py-3 text-sm font-semibold rounded-t-xl transition-colors ${
               tab === key
-                ? 'bg-gray-800 text-white border-t border-l border-r border-gray-700'
-                : 'text-gray-500 hover:text-gray-300'
+                ? 'bg-white/[0.06] text-white border border-b-0 border-white/15'
+                : 'text-slate-500 hover:text-slate-300'
             }`}>
             {label}
           </button>
@@ -220,9 +220,9 @@ function InstructTab({ onDone }) {
     supabase.from('zones').select('id, code, name').order('code').then(({ data }) => setZones(data ?? []))
   }, [fetchOrders])
 
-  if (loading) return <p className="text-center text-gray-500 py-12 animate-pulse">불러오는 중...</p>
+  if (loading) return <p className="text-center text-slate-400 py-12 animate-pulse">불러오는 중...</p>
   if (orders.length === 0)
-    return <p className="text-center text-gray-600 py-12">대기 중인 입고오더가 없습니다.</p>
+    return <p className="text-center text-slate-500 py-12">대기 중인 입고오더가 없습니다.</p>
 
   return (
     <div className="space-y-3">
@@ -586,9 +586,9 @@ function CompleteTab({ onDone }) {
     setCompleting(null)
   }
 
-  if (loading) return <p className="text-center text-gray-500 py-12 animate-pulse">불러오는 중...</p>
+  if (loading) return <p className="text-center text-slate-400 py-12 animate-pulse">불러오는 중...</p>
   if (orders.length === 0)
-    return <p className="text-center text-gray-600 py-12">입고완료 대기 중인 오더가 없습니다.</p>
+    return <p className="text-center text-slate-500 py-12">입고완료 대기 중인 오더가 없습니다.</p>
 
   return (
     <div className="space-y-3">

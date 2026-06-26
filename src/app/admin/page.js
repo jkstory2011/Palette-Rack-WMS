@@ -147,7 +147,7 @@ export default function AdminPage() {
 
   return (
     <div className="max-w-5xl mx-auto space-y-6">
-      <h1 className="text-2xl font-bold text-white">⚙ 관리 페이지</h1>
+      <h1 className="text-3xl font-black text-white tracking-tight leading-none">⚙ 관리 페이지</h1>
 
       {/* 토스트 */}
       {toast && (
@@ -163,20 +163,20 @@ export default function AdminPage() {
       <div className="grid grid-cols-3 gap-3">
         <div className="wms-card text-center py-4">
           <p className="text-2xl font-black text-yellow-400">{pending.length}</p>
-          <p className="text-xs text-gray-500 mt-1">승인 대기</p>
+          <p className="text-xs text-slate-400 mt-1">승인 대기</p>
         </div>
         <div className="wms-card text-center py-4">
           <p className="text-2xl font-black text-green-400">{approved.filter(u => u.is_active).length}</p>
-          <p className="text-xs text-gray-500 mt-1">활성 계정</p>
+          <p className="text-xs text-slate-400 mt-1">활성 계정</p>
         </div>
         <div className="wms-card text-center py-4">
-          <p className="text-2xl font-black text-gray-500">{approved.filter(u => !u.is_active).length}</p>
-          <p className="text-xs text-gray-500 mt-1">비활성 계정</p>
+          <p className="text-2xl font-black text-slate-500">{approved.filter(u => !u.is_active).length}</p>
+          <p className="text-xs text-slate-400 mt-1">비활성 계정</p>
         </div>
       </div>
 
       {/* 탭 */}
-      <div className="flex gap-2 border-b border-gray-700">
+      <div className="flex gap-2 border-b border-white/10">
         {[
           { key: 'pending', label: `⏳ 승인 대기 (${pending.length})` },
           { key: 'all',     label: `👥 전체 직원 (${approved.length})` },
@@ -184,8 +184,8 @@ export default function AdminPage() {
           <button key={key} onClick={() => setTab(key)}
             className={`px-5 py-3 text-sm font-semibold rounded-t-xl transition-colors ${
               tab === key
-                ? 'bg-gray-800 text-white border-t border-l border-r border-gray-700'
-                : 'text-gray-500 hover:text-gray-300'
+                ? 'bg-white/[0.06] text-white border border-b-0 border-white/15'
+                : 'text-slate-500 hover:text-slate-300'
             }`}>
             {label}
           </button>

@@ -21,16 +21,16 @@ export default function ProductionPage() {
 
   return (
     <div className="max-w-4xl mx-auto space-y-5">
-      <h1 className="text-2xl font-bold text-white">생산 관리</h1>
-      <p className="text-xs text-gray-500">화주사 오더 기반 센터 내 적재·생산 작업 프로세스</p>
+      <h1 className="text-3xl font-black text-white tracking-tight leading-none">생산 관리</h1>
+      <p className="text-xs text-slate-500">화주사 오더 기반 센터 내 적재·생산 작업 프로세스</p>
 
-      <div className="flex gap-2 border-b border-gray-700">
+      <div className="flex gap-2 border-b border-white/10">
         {TABS.map(({ key, label }) => (
           <button key={key} onClick={() => setTab(key)}
             className={`px-5 py-3 text-sm font-semibold rounded-t-xl transition-colors ${
               tab === key
-                ? 'bg-gray-800 text-white border-t border-l border-r border-gray-700'
-                : 'text-gray-500 hover:text-gray-300'
+                ? 'bg-white/[0.06] text-white border border-b-0 border-white/15'
+                : 'text-slate-500 hover:text-slate-300'
             }`}>
             {label}
           </button>
@@ -225,9 +225,9 @@ function InProgressTab({ onDone }) {
     setUpdating(null)
   }
 
-  if (loading) return <p className="text-center text-gray-500 py-12 animate-pulse">불러오는 중...</p>
+  if (loading) return <p className="text-center text-slate-400 py-12 animate-pulse">불러오는 중...</p>
   if (orders.length === 0)
-    return <p className="text-center text-gray-600 py-12">진행 중인 생산오더가 없습니다.</p>
+    return <p className="text-center text-slate-500 py-12">진행 중인 생산오더가 없습니다.</p>
 
   return (
     <div className="space-y-4">
@@ -329,9 +329,9 @@ function CompletedTab() {
       .then(({ data }) => { setOrders(data ?? []); setLoading(false) })
   }, [])
 
-  if (loading) return <p className="text-center text-gray-500 py-12 animate-pulse">불러오는 중...</p>
+  if (loading) return <p className="text-center text-slate-400 py-12 animate-pulse">불러오는 중...</p>
   if (orders.length === 0)
-    return <p className="text-center text-gray-600 py-12">완료된 생산오더가 없습니다.</p>
+    return <p className="text-center text-slate-500 py-12">완료된 생산오더가 없습니다.</p>
 
   return (
     <div className="wms-card overflow-x-auto">
