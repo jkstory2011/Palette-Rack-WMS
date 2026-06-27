@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 
-const BG = 'https://images.unsplash.com/photo-1586528116311-ad8dd3c8310d?auto=format&fit=crop&w=1920&q=80'
+const BG = 'https://images.unsplash.com/photo-1553413077-190dd305871c?auto=format&fit=crop&w=1920&q=80'
 
 export default function LoginPage() {
   const [tab, setTab]         = useState('user')
@@ -102,7 +102,7 @@ export default function LoginPage() {
         {/* 모바일 배경 */}
         <div className="absolute inset-0 lg:hidden"
           style={{ backgroundImage: `url(${BG})`, backgroundSize: 'cover', backgroundPosition: 'center' }} />
-        <div className="absolute inset-0 lg:hidden bg-gray-950/85 backdrop-blur-sm" />
+        <div className="absolute inset-0 lg:hidden bg-gray-950/65 backdrop-blur-[2px]" />
 
         <div className="relative z-10 w-full max-w-sm space-y-6">
 
