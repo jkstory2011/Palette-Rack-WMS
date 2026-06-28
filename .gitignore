@@ -84,7 +84,7 @@ out
 dist
 
 # gatsby build output
-public
+# public  ← Next.js 정적 에셋 폴더이므로 추적 허용
 
 # dotenv environment variables file
 .env
