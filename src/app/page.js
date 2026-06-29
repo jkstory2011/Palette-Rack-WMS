@@ -263,7 +263,7 @@ export default function DashboardPage() {
           <p className="text-slate-500 text-sm mb-3">등록된 구역이 없습니다.</p>
           <Link href="/locations"
             className="text-indigo-400 hover:text-indigo-300 text-sm transition-colors">
-            📍 로케이션 관리에서 구역을 추가하세요
+            로케이션 관리에서 구역을 추가하세요
           </Link>
         </div>
       ) : (

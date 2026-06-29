@@ -15,7 +15,7 @@ const PERIOD_OPTIONS = [
 
 // 오더 상태 메타
 const STATUS_META = {
-  registered:  { label: '등록',   cls: 'bg-blue-600/20  text-blue-400  border-blue-600/40'  },
+  registered:  { label: '등록',   cls: 'bg-blue-600/20  text-[#F59E0B]  border-blue-600/40'  },
   instructed:  { label: '지시',   cls: 'bg-yellow-600/20 text-yellow-400 border-yellow-600/40' },
   on_hold:     { label: '보류',   cls: 'bg-orange-600/20 text-orange-400 border-orange-600/40' },
   cancelled:   { label: '취소',   cls: 'bg-gray-600/20  text-gray-400  border-gray-600/40'   },
@@ -34,7 +34,7 @@ const ACTIONS_BY_STATUS = {
 
 const ACTION_META = {
   start:     { label: '작업시작', emoji: '▶',  btnCls: 'bg-green-700 hover:bg-green-600'  },
-  rerequest: { label: '재요청',  emoji: '🔄', btnCls: 'bg-blue-700 hover:bg-blue-600'    },
+  rerequest: { label: '재요청',  emoji: '🔄', btnCls: 'bg-[#F59E0B]/80 hover:bg-[#F59E0B] text-black'    },
   hold:      { label: '보류',   emoji: '⏸',  btnCls: 'bg-orange-700 hover:bg-orange-600' },
   cancel:    { label: '취소',   emoji: '🚫',  btnCls: 'bg-gray-700 hover:bg-gray-600'    },
   delete:    { label: '삭제',   emoji: '🗑',  btnCls: 'bg-red-800 hover:bg-red-700'      },
@@ -49,8 +49,8 @@ export default function WorkOrdersPage() {
 
       <div className="flex gap-2 border-b border-white/10">
         {[
-          { key: 'orders', label: '📋 오더 관리' },
-          { key: 'logs',   label: '📜 작업 이력' },
+          { key: 'orders', label: '오더 관리' },
+          { key: 'logs',   label: '작업 이력' },
         ].map(({ key, label }) => (
           <button key={key} onClick={() => setTab(key)}
             className={`px-5 py-3 text-sm font-semibold rounded-t-xl transition-colors ${
@@ -171,7 +171,7 @@ function OrdersTab() {
       {/* 현황 요약 */}
       <div className="grid grid-cols-5 gap-3">
         {[
-          { key: 'registered',  label: '등록',   color: 'text-blue-400'   },
+          { key: 'registered',  label: '등록',   color: 'text-[#F59E0B]'   },
           { key: 'instructed',  label: '지시',   color: 'text-yellow-400' },
           { key: 'in_progress', label: '진행중', color: 'text-cyan-400'   },
           { key: 'on_hold',     label: '보류',   color: 'text-orange-400' },
@@ -189,12 +189,12 @@ function OrdersTab() {
         <div className="flex gap-1.5">
           {[
             { val: 'all',      label: '전체' },
-            { val: 'inbound',  label: '📥 입고' },
-            { val: 'outbound', label: '🚛 출고' },
+            { val: 'inbound',  label: '입고' },
+            { val: 'outbound', label: '출고' },
           ].map(({ val, label }) => (
             <button key={val} onClick={() => setTypeFilter(val)}
               className={`px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${
-                typeFilter === val ? 'bg-blue-600 text-white' : 'bg-gray-800 text-gray-400 hover:text-white'
+                typeFilter === val ? 'bg-[#F59E0B] text-black' : 'bg-gray-800 text-gray-400 hover:text-white'
               }`}>
               {label}
             </button>
@@ -232,16 +232,16 @@ function OrdersTab() {
                   {/* 유형 뱃지 */}
                   <div className="shrink-0 pt-0.5">
                     {order.type === 'inbound' ? (
-                      <span className="whitespace-nowrap text-xs font-bold px-2 py-1 rounded-full bg-green-900/40 text-green-400 border border-green-800">📥 입고</span>
+                      <span className="whitespace-nowrap text-xs font-bold px-2 py-1 rounded-full bg-green-900/40 text-green-400 border border-green-800">입고</span>
                     ) : (
-                      <span className="whitespace-nowrap text-xs font-bold px-2 py-1 rounded-full bg-red-900/40 text-red-400 border border-red-800">🚛 출고</span>
+                      <span className="whitespace-nowrap text-xs font-bold px-2 py-1 rounded-full bg-red-900/40 text-red-400 border border-red-800">출고</span>
                     )}
                   </div>
 
                   {/* 오더 정보 */}
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
-                      <span className="font-mono font-bold text-blue-400 text-sm">{order.order_no}</span>
+                      <span className="font-mono font-bold text-[#F59E0B] text-sm">{order.order_no}</span>
                       <span className={`text-xs px-2 py-0.5 rounded-full border ${st.cls}`}>{st.label}</span>
                       {order.client_name && (
                         <span className="text-xs bg-gray-700 text-gray-300 px-2 py-0.5 rounded-full">{order.client_name}</span>
@@ -363,7 +363,7 @@ function ActionModal({ order, action, onClose, onConfirm }) {
     ? 'bg-gray-700 hover:bg-gray-600'
     : action === 'hold'
     ? 'bg-orange-700 hover:bg-orange-600'
-    : 'bg-blue-700 hover:bg-blue-600'
+    : 'bg-[#F59E0B]/80 hover:bg-[#F59E0B] text-black'
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4"
@@ -379,7 +379,7 @@ function ActionModal({ order, action, onClose, onConfirm }) {
             <div>
               <h2 className="text-white font-bold text-lg">{meta.label} 처리</h2>
               <p className="text-slate-400 text-xs mt-0.5">
-                {typeLabel} 오더 · <span className="font-mono text-blue-400">{order.order_no}</span>
+                {typeLabel} 오더 · <span className="font-mono text-[#F59E0B]">{order.order_no}</span>
               </p>
             </div>
           </div>
@@ -551,12 +551,12 @@ function LogsTab() {
           <div className="flex gap-1.5">
             {[
               { val: 'all',      label: '전체' },
-              { val: 'inbound',  label: '📥 입고' },
-              { val: 'outbound', label: '🚛 출고' },
+              { val: 'inbound',  label: '입고' },
+              { val: 'outbound', label: '출고' },
             ].map(({ val, label }) => (
               <button key={val} onClick={() => setTypeFilter(val)}
                 className={`px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${
-                  typeFilter === val ? 'bg-blue-600 text-white' : 'bg-gray-800 text-gray-400 hover:text-white hover:bg-gray-700'
+                  typeFilter === val ? 'bg-[#F59E0B] text-black' : 'bg-gray-800 text-gray-400 hover:text-white hover:bg-gray-700'
                 }`}>
                 {label}
               </button>
@@ -612,16 +612,16 @@ function LogsTab() {
               <tbody className="divide-y divide-white/[0.05]">
                 {filtered.map(log => (
                   <tr key={log.uid} onClick={() => setSelected(log)}
-                    className="cursor-pointer transition-colors hover:bg-blue-600/10">
+                    className="cursor-pointer transition-colors hover:bg-[#F59E0B]/10">
                     <td className="px-5 py-4">
                       {log.type === 'inbound' ? (
-                        <span className="whitespace-nowrap inline-flex items-center gap-1 text-xs font-bold px-2.5 py-1 rounded-full bg-green-900/40 text-green-400 border border-green-800">📥 입고</span>
+                        <span className="whitespace-nowrap inline-flex items-center gap-1 text-xs font-bold px-2.5 py-1 rounded-full bg-green-900/40 text-green-400 border border-green-800">입고</span>
                       ) : (
-                        <span className="whitespace-nowrap inline-flex items-center gap-1 text-xs font-bold px-2.5 py-1 rounded-full bg-red-900/40 text-red-400 border border-red-800">🚛 출고</span>
+                        <span className="whitespace-nowrap inline-flex items-center gap-1 text-xs font-bold px-2.5 py-1 rounded-full bg-red-900/40 text-red-400 border border-red-800">출고</span>
                       )}
                     </td>
                     <td className="px-5 py-4">
-                      <span className="inline-block bg-blue-600/20 border border-blue-500/30 text-blue-300 font-mono font-bold text-xs px-3 py-1 rounded-lg">
+                      <span className="inline-block bg-[#F59E0B]/15 border border-[#F59E0B]/30 text-[#F59E0B] font-mono font-bold text-xs px-3 py-1 rounded-lg">
                         {log.locationCode}
                       </span>
                       {log.zoneCode && <span className="text-xs text-gray-600 ml-2">{log.zoneCode}구역</span>}
@@ -643,7 +643,7 @@ function LogsTab() {
                               <span className="text-gray-500 text-xs">{p.qty.toLocaleString()} {p.unit}</span>
                             </div>
                           ))}
-                          {log.products.length > 2 && <span className="text-xs text-blue-400">+{log.products.length - 2}개 (혼적)</span>}
+                          {log.products.length > 2 && <span className="text-xs text-[#F59E0B]">+{log.products.length - 2}개 (혼적)</span>}
                         </div>
                       )}
                     </td>

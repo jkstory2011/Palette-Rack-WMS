@@ -1,125 +1,170 @@
 'use client'
 
 import { usePathname } from 'next/navigation'
-import { useState, useTransition } from 'react'
-import { useRouter } from 'next/navigation'
+import { useState } from 'react'
+
+// ── SVG 아이콘 (이모지 대신 벡터)
+const IconGrid       = () => <svg width="15" height="15" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><rect x="1" y="1" width="6" height="6" rx="1"/><rect x="9" y="1" width="6" height="6" rx="1"/><rect x="1" y="9" width="6" height="6" rx="1"/><rect x="9" y="9" width="6" height="6" rx="1"/></svg>
+const IconInbound    = () => <svg width="15" height="15" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M8 1L1 5v1h14V5L8 1zM2 7v7h3v-4h6v4h3V7H2z"/></svg>
+const IconOutbound   = () => <svg width="15" height="15" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M2 4h12l1 2v6H1V6l1-2zm2-2h8v2H4V2z"/></svg>
+const IconProduction = () => <svg width="15" height="15" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M1 15V8l3-3 2 2 2-2 2 2 2-2 3 3v7H1zm2-2h2v-3H3v3zm3 0h2v-4H6v4zm3 0h2v-3H9v3z"/></svg>
+const IconOrder      = () => <svg width="15" height="15" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M3 1h10a1 1 0 011 1v12a1 1 0 01-1 1H3a1 1 0 01-1-1V2a1 1 0 011-1zm1 2v2h8V3H4zm0 4v1h8V7H4zm0 3v1h5v-1H4z"/></svg>
+const IconProduct    = () => <svg width="15" height="15" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M2 3h12v2H2V3zm0 4h12v2H2V7zm0 4h8v2H2v-2z"/></svg>
+const IconLocation   = () => <svg width="15" height="15" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M8 1a5 5 0 00-5 5c0 3.5 5 9 5 9s5-5.5 5-9a5 5 0 00-5-5zm0 7a2 2 0 110-4 2 2 0 010 4z"/></svg>
+const IconLog        = () => <svg width="15" height="15" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M8 1a7 7 0 100 14A7 7 0 008 1zm1 3.5V8.3l2.5 1.5-.8 1.2L7 9V4.5h2z"/></svg>
+const IconAdmin      = () => <svg width="15" height="15" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M8 0a2.5 2.5 0 00-2.4 1.8L4 2.5 3 4l1.2 1.2A4 4 0 004 6.5a4 4 0 00.2 1.3L3 9l1 1.5 1.6-.7A4 4 0 008 11a4 4 0 002.4-.7l1.6.7L13 9l-1.2-1.2A4 4 0 0012 6.5a4 4 0 00-.2-1.3L13 4l-1-1.5-1.6.7A4 4 0 008 3a4 4 0 00-.6 0V0H8zm0 4a2.5 2.5 0 110 5 2.5 2.5 0 010-5z"/></svg>
+const IconLogout     = () => <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M6 2H3a1 1 0 00-1 1v10a1 1 0 001 1h3v-2H4V4h2V2zm4 3L14 8l-4 3V9H6V7h4V5z"/></svg>
 
 const OP_LINKS = [
-  { href: '/',            label: '조감도',     icon: '🗺'  },
-  { href: '/inbound',     label: '입고',       icon: '📥'  },
-  { href: '/outbound',    label: '출고',       icon: '🚛'  },
-  { href: '/production',  label: 'B2B생산',    icon: '🏭'  },
-  { href: '/work-orders', label: '작업지시서',  icon: '📝'  },
+  { href: '/',            label: '조감도',    Icon: IconGrid       },
+  { href: '/inbound',     label: '입고',      Icon: IconInbound    },
+  { href: '/outbound',    label: '출고',      Icon: IconOutbound   },
+  { href: '/production',  label: 'B2B 생산',  Icon: IconProduction },
+  { href: '/work-orders', label: '작업지시서', Icon: IconOrder      },
 ]
 const MGMT_LINKS = [
-  { href: '/products',  label: '상품',     icon: '📋' },
-  { href: '/locations', label: '로케이션',  icon: '📍' },
-  { href: '/logs',      label: '이력',     icon: '📜' },
+  { href: '/products',  label: '상품',    Icon: IconProduct  },
+  { href: '/locations', label: '로케이션', Icon: IconLocation },
+  { href: '/logs',      label: '이력',    Icon: IconLog      },
 ]
 
 export default function Navigation({ isAdmin, displayName, position }) {
   const pathname = usePathname()
+  const isActive = (href) => href === '/' ? pathname === '/' : pathname.startsWith(href)
 
-  const isActive = (href) =>
-    href === '/' ? pathname === '/' : pathname.startsWith(href)
+  const initial = displayName ? displayName[0] : '?'
 
   return (
-    <nav className="flex items-center gap-0.5">
-      {/* 운영 그룹 */}
-      {OP_LINKS.map(link => (
-        <NavLink key={link.href} href={link.href} active={isActive(link.href)}
-          icon={link.icon}>{link.label}</NavLink>
-      ))}
-
-      <Sep />
-
-      {/* 관리 그룹 */}
-      {MGMT_LINKS.map(link => (
-        <NavLink key={link.href} href={link.href} active={isActive(link.href)}
-          icon={link.icon}>{link.label}</NavLink>
-      ))}
-
-      {isAdmin && (
-        <>
-          <Sep />
-          <NavLink href="/admin" active={isActive('/admin')} icon="⚙">관리</NavLink>
-        </>
-      )}
-
-      <Sep />
-
-      {/* 사용자 정보 */}
-      {displayName && (
-        <div className="flex items-center gap-2 px-3 py-1.5">
-          {position && (
-            <span className="text-[10px] font-bold tracking-[0.08em] px-2 py-0.5 rounded-full"
-              style={{
-                background: 'rgba(99,102,241,0.12)',
-                border: '1px solid rgba(99,102,241,0.25)',
-                color: '#a5b4fc',
-              }}>
-              {position}
-            </span>
-          )}
-          <span className="text-[13px] font-semibold text-slate-200 hidden sm:block">
-            {displayName}
-          </span>
+    <aside
+      className="no-print hidden md:flex flex-col shrink-0"
+      style={{
+        width: '220px',
+        background: '#13161D',
+        borderRight: '1px solid rgba(255,255,255,0.07)',
+        height: '100vh',
+        overflowY: 'auto',
+        overflowX: 'hidden',
+      }}
+    >
+      {/* ── 브랜드 */}
+      <div style={{
+        height: '56px', flexShrink: 0,
+        display: 'flex', alignItems: 'center', gap: '10px',
+        padding: '0 16px',
+        borderBottom: '1px solid rgba(255,255,255,0.07)',
+      }}>
+        <div style={{
+          width: '30px', height: '30px', flexShrink: 0,
+          background: '#F59E0B', borderRadius: '6px',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          fontSize: '12px', fontWeight: '800', color: '#000',
+          fontFamily: "'JetBrains Mono', monospace",
+        }}>
+          PR
         </div>
-      )}
+        <div>
+          <div style={{ fontSize: '13px', fontWeight: '700', color: '#E8EAED', letterSpacing: '-0.01em', lineHeight: '1.2' }}>
+            Palette Rack WMS
+          </div>
+          <div style={{ fontSize: '9.5px', color: '#4E5A6A', fontFamily: "'JetBrains Mono', monospace", letterSpacing: '0.06em' }}>
+            파렛트랙 관리시스템
+          </div>
+        </div>
+      </div>
 
-      {/* 로그아웃 */}
-      <LogoutBtn />
-    </nav>
+      {/* ── 운영 */}
+      <div style={{ paddingTop: '20px' }}>
+        <SectionLabel>운영</SectionLabel>
+        {OP_LINKS.map(({ href, label, Icon }) => (
+          <NavItem key={href} href={href} active={isActive(href)} Icon={Icon}>{label}</NavItem>
+        ))}
+      </div>
+
+      {/* ── 관리 */}
+      <div style={{ paddingTop: '20px' }}>
+        <SectionLabel>관리</SectionLabel>
+        {MGMT_LINKS.map(({ href, label, Icon }) => (
+          <NavItem key={href} href={href} active={isActive(href)} Icon={Icon}>{label}</NavItem>
+        ))}
+        {isAdmin && (
+          <NavItem href="/admin" active={isActive('/admin')} Icon={IconAdmin}>관리홈</NavItem>
+        )}
+      </div>
+
+      {/* ── 하단: 사용자 + 로그아웃 */}
+      <div style={{ marginTop: 'auto', padding: '12px', borderTop: '1px solid rgba(255,255,255,0.07)', flexShrink: 0 }}>
+        <div style={{
+          display: 'flex', alignItems: 'center', gap: '9px',
+          padding: '8px', background: '#1A1E28', borderRadius: '8px',
+        }}>
+          <div style={{
+            width: '28px', height: '28px', flexShrink: 0,
+            borderRadius: '50%', background: '#F59E0B',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            fontSize: '12px', fontWeight: '700', color: '#000',
+          }}>
+            {initial}
+          </div>
+          <div style={{ flex: 1, minWidth: 0, overflow: 'hidden' }}>
+            <div style={{ fontSize: '12.5px', fontWeight: '600', color: '#E8EAED', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+              {displayName || '사용자'}
+            </div>
+            <div style={{ fontSize: '10px', color: '#4E5A6A', fontFamily: "'JetBrains Mono', monospace" }}>
+              {position || 'USER'}
+            </div>
+          </div>
+          <LogoutBtn />
+        </div>
+      </div>
+    </aside>
   )
 }
 
-function NavLink({ href, active, icon, children }) {
+function SectionLabel({ children }) {
   return (
-    <a href={href}
-      className="relative flex items-center gap-1.5 px-3 py-1.5 rounded-lg
-                 text-[13px] font-medium transition-all duration-150"
-      style={active ? {
-        color: '#c7d2fe',
-        background: 'rgba(99,102,241,0.13)',
-        border: '1px solid rgba(99,102,241,0.22)',
-        boxShadow: '0 0 12px rgba(99,102,241,0.12)',
-      } : {
-        color: 'rgba(100,116,139,1)',
-        background: 'transparent',
-        border: '1px solid transparent',
+    <div style={{
+      fontSize: '10px', fontWeight: '600', letterSpacing: '0.14em',
+      textTransform: 'uppercase', color: '#4E5A6A',
+      fontFamily: "'JetBrains Mono', monospace",
+      padding: '0 16px 8px',
+    }}>
+      {children}
+    </div>
+  )
+}
+
+function NavItem({ href, active, Icon, children }) {
+  return (
+    <a
+      href={href}
+      style={{
+        display: 'flex', alignItems: 'center', gap: '9px',
+        padding: '9px 14px 9px 12px', margin: '0 4px',
+        borderRadius: '0 6px 6px 0',
+        color: active ? '#F59E0B' : '#9AA5B4',
+        background: active ? 'rgba(245,158,11,0.12)' : 'transparent',
+        borderLeft: active ? '2px solid #F59E0B' : '2px solid transparent',
+        fontSize: '13.5px', fontWeight: '500',
+        textDecoration: 'none', cursor: 'pointer',
+        transition: 'all 0.13s',
+        minHeight: '36px', minWidth: 0,
       }}
       onMouseEnter={e => {
         if (!active) {
-          e.currentTarget.style.color = 'rgba(226,232,240,1)'
-          e.currentTarget.style.background = 'rgba(255,255,255,0.05)'
-          e.currentTarget.style.border = '1px solid rgba(255,255,255,0.07)'
+          e.currentTarget.style.background = 'rgba(245,158,11,0.08)'
+          e.currentTarget.style.color = '#E8EAED'
         }
       }}
       onMouseLeave={e => {
         if (!active) {
-          e.currentTarget.style.color = 'rgba(100,116,139,1)'
           e.currentTarget.style.background = 'transparent'
-          e.currentTarget.style.border = '1px solid transparent'
+          e.currentTarget.style.color = '#9AA5B4'
         }
-      }}>
-      <span className="text-[14px] leading-none">{icon}</span>
-      <span className="hidden sm:block">{children}</span>
-      {active && (
-        <span className="absolute bottom-[-9px] left-1/2 -translate-x-1/2 h-[2px] rounded-full hidden sm:block"
-          style={{
-            width: 'calc(100% - 16px)',
-            background: 'linear-gradient(90deg,transparent,rgba(129,140,248,0.9),transparent)',
-            boxShadow: '0 0 8px rgba(99,102,241,0.7)',
-          }} />
-      )}
+      }}
+    >
+      <span style={{ opacity: active ? 1 : 0.65, flexShrink: 0 }}><Icon /></span>
+      {children}
     </a>
-  )
-}
-
-function Sep() {
-  return (
-    <div className="hidden sm:block mx-1.5 w-px h-4 rounded-full"
-      style={{ background: 'linear-gradient(to bottom,transparent,rgba(99,102,241,0.25),transparent)' }} />
   )
 }
 
@@ -128,34 +173,27 @@ function LogoutBtn() {
 
   async function handleLogout() {
     setLoading(true)
-    try {
-      await fetch('/api/auth/logout', { method: 'POST' })
-    } finally {
-      window.location.href = '/login'
-    }
+    try { await fetch('/api/auth/logout', { method: 'POST' }) }
+    finally { window.location.href = '/login' }
   }
 
   return (
-    <button onClick={handleLogout} disabled={loading}
-      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[13px] font-medium
-                 transition-all duration-150 ml-0.5"
+    <button
+      onClick={handleLogout}
+      disabled={loading}
+      title="로그아웃"
       style={{
-        color: 'rgba(100,116,139,1)',
-        background: 'transparent',
-        border: '1px solid transparent',
+        background: 'transparent', border: 'none',
+        color: '#4E5A6A', cursor: 'pointer',
+        padding: '4px', borderRadius: '4px',
+        display: 'flex', alignItems: 'center',
+        minHeight: 'auto', minWidth: 'auto', flexShrink: 0,
+        transition: 'color 0.13s',
       }}
-      onMouseEnter={e => {
-        e.currentTarget.style.color = '#fca5a5'
-        e.currentTarget.style.background = 'rgba(239,68,68,0.08)'
-        e.currentTarget.style.border = '1px solid rgba(239,68,68,0.18)'
-      }}
-      onMouseLeave={e => {
-        e.currentTarget.style.color = 'rgba(100,116,139,1)'
-        e.currentTarget.style.background = 'transparent'
-        e.currentTarget.style.border = '1px solid transparent'
-      }}>
-      <span className="text-[14px]">🔒</span>
-      <span className="hidden sm:block">{loading ? '...' : '로그아웃'}</span>
+      onMouseEnter={e => { e.currentTarget.style.color = '#f87171' }}
+      onMouseLeave={e => { e.currentTarget.style.color = '#4E5A6A' }}
+    >
+      <IconLogout />
     </button>
   )
 }

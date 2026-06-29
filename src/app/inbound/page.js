@@ -164,7 +164,7 @@ function RegisterTab({ onDone }) {
 
         <button type="button"
           onClick={() => setForm(f => ({ ...f, items: [...f.items, { productId: '', qtyPerPallet: '' }] }))}
-          className="text-sm text-blue-400 hover:text-blue-300 transition-colors">
+          className="text-sm text-[#F59E0B] hover:text-[#FBBF24] transition-colors">
           + 상품 추가 (혼적)
         </button>
 
@@ -176,7 +176,7 @@ function RegisterTab({ onDone }) {
           </Field>
           <div className="text-sm text-gray-400 space-y-0.5">
             <p>1파렛트당 <strong className="text-white">{totalPerPallet}</strong> 수량</p>
-            <p>총 <strong className="text-blue-400 text-base">{Number(form.palletCount)}개</strong> 파렛트 /
+            <p>총 <strong className="text-[#F59E0B] text-base">{Number(form.palletCount)}개</strong> 파렛트 /
               합계 <strong className="text-white">{totalAll}</strong> 수량
             </p>
           </div>
@@ -187,8 +187,8 @@ function RegisterTab({ onDone }) {
       {success && <p className="text-sm text-green-400 bg-green-900/20 border border-green-700 rounded-xl px-4 py-3">{success}</p>}
 
       <button type="submit" disabled={saving}
-        className="w-full py-4 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-lg font-bold transition-colors disabled:opacity-40">
-        {saving ? '등록 중...' : '📋 입고 등록'}
+        className="w-full py-4 rounded-xl bg-[#F59E0B] hover:bg-[#FBBF24] text-black text-lg font-bold transition-colors disabled:opacity-40">
+        {saving ? '등록 중...' : '입고 등록'}
       </button>
     </form>
   )
@@ -231,7 +231,7 @@ function InstructTab({ onDone }) {
           <div className="flex items-start justify-between gap-3">
             <div>
               <div className="flex items-center gap-2">
-                <span className="font-mono text-blue-400 font-bold text-sm">{order.order_no}</span>
+                <span className="font-mono text-[#F59E0B] font-bold text-sm">{order.order_no}</span>
                 {order.client_name && <span className="wms-tag">{order.client_name}</span>}
               </div>
               <p className="text-white font-semibold mt-0.5">
@@ -461,7 +461,7 @@ function InstructModal({ order, zones, onClose, onComplete }) {
                         {assignment.map((slot, i) => (
                           <tr key={i} className="hover:bg-gray-800/40">
                             <td className="px-3 py-2 text-gray-600">{i + 1}</td>
-                            <td className="px-3 py-2 font-mono text-blue-300">{palletCodes[i]}</td>
+                            <td className="px-3 py-2 font-mono text-[#F59E0B]">{palletCodes[i]}</td>
                             <td className="px-3 py-2 font-bold text-white">{slot.locationCode}</td>
                             <td className="px-3 py-2 text-center text-gray-300">{slot.tier}단</td>
                             <td className="px-3 py-2 text-center">
@@ -483,7 +483,7 @@ function InstructModal({ order, zones, onClose, onComplete }) {
         <div className="p-5 border-t border-white/10 flex gap-3">
           {done ? (
             <button onClick={onComplete}
-              className="flex-1 py-3 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-sm transition-colors">
+              className="flex-1 py-3 rounded-xl bg-[#F59E0B] hover:bg-[#FBBF24] text-black font-bold text-sm transition-colors">
               입고완료 탭으로 →
             </button>
           ) : (
@@ -698,7 +698,7 @@ function BatchLabelModal({ pallets, onClose }) {
 
         <div className="no-print bg-gray-50 border-t border-gray-200 p-4 space-y-2">
           <button onClick={handlePrint}
-            className="w-full py-3 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-sm">
+            className="w-full py-3 rounded-xl bg-[#F59E0B] hover:bg-[#FBBF24] text-black font-bold text-sm">
             🖨️ 라벨 인쇄
           </button>
           <div className="flex gap-2">

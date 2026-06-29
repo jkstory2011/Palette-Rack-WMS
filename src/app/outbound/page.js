@@ -153,7 +153,7 @@ function RegisterTab({ onDone }) {
         </div>
         <button type="button"
           onClick={() => setForm(f => ({ ...f, items: [...f.items, { productId: '', requiredQty: '' }] }))}
-          className="text-sm text-blue-400 hover:text-blue-300 transition-colors">
+          className="text-sm text-[#F59E0B] hover:text-[#FBBF24] transition-colors">
           + 상품 추가
         </button>
       </div>
@@ -162,8 +162,8 @@ function RegisterTab({ onDone }) {
       {success && <p className="text-sm text-green-400 bg-green-900/20 border border-green-700 rounded-xl px-4 py-3">{success}</p>}
 
       <button type="submit" disabled={saving}
-        className="w-full py-4 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-lg font-bold transition-colors disabled:opacity-40">
-        {saving ? '등록 중...' : '📋 출고 등록'}
+        className="w-full py-4 rounded-xl bg-[#F59E0B] hover:bg-[#FBBF24] text-black text-lg font-bold transition-colors disabled:opacity-40">
+        {saving ? '등록 중...' : '출고 등록'}
       </button>
     </form>
   )
@@ -202,7 +202,7 @@ function InstructTab({ onDone }) {
           <div className="flex items-start justify-between gap-3">
             <div>
               <div className="flex items-center gap-2">
-                <span className="font-mono text-blue-400 font-bold text-sm">{order.order_no}</span>
+                <span className="font-mono text-[#F59E0B] font-bold text-sm">{order.order_no}</span>
                 {order.client_name && <span className="wms-tag">{order.client_name}</span>}
               </div>
               <div className="flex flex-wrap gap-1 mt-1">
@@ -390,7 +390,7 @@ function OutboundInstructModal({ order, onClose, onComplete }) {
         <div className="p-5 border-t border-white/10 flex gap-3">
           {done ? (
             <button onClick={onComplete}
-              className="flex-1 py-3 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-sm transition-colors">
+              className="flex-1 py-3 rounded-xl bg-[#F59E0B] hover:bg-[#FBBF24] text-black font-bold text-sm transition-colors">
               출고완료 탭으로 →
             </button>
           ) : (
@@ -510,7 +510,7 @@ function CompleteTab({ onDone }) {
                   ))}
                 </div>
                 <button onClick={() => setExpanded(e => ({ ...e, [order.id]: !e[order.id] }))}
-                  className="text-xs text-blue-400 hover:text-blue-300 mt-1 transition-colors">
+                  className="text-xs text-[#F59E0B] hover:text-[#FBBF24] mt-1 transition-colors">
                   {isExpanded ? '▲ 피킹목록 접기' : `▼ 피킹목록 보기 (${picks.length}건)`}
                 </button>
               </div>

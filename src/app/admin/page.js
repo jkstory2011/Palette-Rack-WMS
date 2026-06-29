@@ -41,7 +41,7 @@ export default function AdminPage() {
         <p className="text-xs font-semibold tracking-[0.2em] text-slate-500 uppercase font-mono mb-1.5">
           Administration
         </p>
-        <h1 className="text-3xl font-black text-white tracking-tight leading-none">⚙ 관리 홈</h1>
+        <h1 className="text-3xl font-black text-white tracking-tight leading-none">관리 홈</h1>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">

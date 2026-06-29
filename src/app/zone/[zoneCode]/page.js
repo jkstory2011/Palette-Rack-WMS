@@ -93,7 +93,7 @@ export default function ZonePage() {
     return (
       <div className="text-center py-24 space-y-4">
         <p className="text-2xl text-gray-500">구역 '{zoneCode}'을 찾을 수 없습니다.</p>
-        <Link href="/" className="text-blue-400 hover:underline">← 전체 조감도로</Link>
+        <Link href="/" className="text-[#F59E0B] hover:underline">← 전체 조감도로</Link>
       </div>
     )
   }
@@ -139,10 +139,13 @@ export default function ZonePage() {
           랙을 클릭하면 4단 × 좌/우 슬롯 상세를 확인할 수 있습니다.
         </p>
 
+        {/* 격자 래퍼: max-content로 실제 너비를 확장해 수평 스크롤 활성화 */}
+        <div style={{ width: 'max-content', minWidth: '100%' }}>
+
         {/* 열 번호 헤더 */}
         <div
           className="grid gap-2 mb-1 pl-10"
-          style={{ gridTemplateColumns: `repeat(${maxX}, minmax(80px, 1fr))` }}
+          style={{ gridTemplateColumns: `repeat(${maxX}, 80px)` }}
         >
           {Array.from({ length: maxX }, (_, i) => (
             <div key={i} className="text-center text-xs text-gray-600">{i + 1}열</div>
@@ -159,8 +162,8 @@ export default function ZonePage() {
 
               {/* 각 열 셀 */}
               <div
-                className="grid gap-2 flex-1"
-                style={{ gridTemplateColumns: `repeat(${maxX}, minmax(80px, 1fr))` }}
+                className="grid gap-2"
+                style={{ gridTemplateColumns: `repeat(${maxX}, 80px)` }}
               >
                 {Array.from({ length: maxX }, (_, colIdx) => {
                   const gridX = colIdx + 1
@@ -210,6 +213,8 @@ export default function ZonePage() {
             </div>
           )
         })}
+
+        </div>{/* end: 격자 래퍼 */}
 
         {/* 범례 */}
         <div className="flex flex-wrap items-center gap-4 mt-5 pt-4 border-t border-gray-800 text-xs text-gray-400">

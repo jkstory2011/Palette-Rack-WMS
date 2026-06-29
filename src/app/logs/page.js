@@ -16,8 +16,8 @@ export default function LogsPage() {
       {/* 탭 */}
       <div className="flex gap-2 border-b border-white/10">
         {[
-          { key: TABS.IN,  label: '📥 입고 이력' },
-          { key: TABS.OUT, label: '🚛 출고 이력' },
+          { key: TABS.IN,  label: '입고 이력' },
+          { key: TABS.OUT, label: '출고 이력' },
         ].map(({ key, label }) => (
           <button
             key={key}

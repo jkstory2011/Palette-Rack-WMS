@@ -14,8 +14,8 @@ export default function LocationsPage() {
 
       <div className="flex gap-2 border-b border-white/10">
         {[
-          { key: TABS.ZONE,    label: '🏭 구역(Zone)' },
-          { key: TABS.PALLET,  label: '📦 파렛트랙 로케이션' },
+          { key: TABS.ZONE,    label: '구역(Zone)' },
+          { key: TABS.PALLET,  label: '파렛트랙 로케이션' },
           { key: TABS.PRODUCT, label: '🗂 상품 로케이션' },
         ].map(({ key, label }) => (
           <button key={key} onClick={() => setTab(key)}
@@ -192,7 +192,7 @@ function ZoneTab() {
                     <td className="py-2 text-center text-gray-400">{z.locations?.length ?? 0}개</td>
                     <td className="py-2 text-right whitespace-nowrap">
                       <button onClick={() => handleEditSave(z)}
-                        className="text-xs text-blue-400 hover:text-blue-300 font-semibold px-2 py-1">저장</button>
+                        className="text-xs text-[#F59E0B] hover:text-[#FBBF24] font-semibold px-2 py-1">저장</button>
                       <button onClick={() => setEditingId(null)}
                         className="text-xs text-gray-600 hover:text-gray-400 px-2 py-1">취소</button>
                     </td>
@@ -209,7 +209,7 @@ function ZoneTab() {
                     <td className="py-3 text-center text-gray-400">{z.locations?.length ?? 0}개</td>
                     <td className="py-3 text-right whitespace-nowrap">
                       <button onClick={() => startEdit(z)}
-                        className="text-xs text-gray-600 hover:text-blue-400 transition-colors px-2 py-1 opacity-0 group-hover:opacity-100">수정</button>
+                        className="text-xs text-gray-600 hover:text-[#FBBF24] transition-colors px-2 py-1 opacity-0 group-hover:opacity-100">수정</button>
                       <button onClick={() => handleDelete(z)}
                         className="text-xs text-gray-600 hover:text-red-400 transition-colors px-2 py-1 opacity-0 group-hover:opacity-100">삭제</button>
                     </td>
@@ -267,7 +267,7 @@ function BulkZoneModal({ onClose, onSuccess }) {
   const validCount = preview.filter(r => r.valid).length
 
   return (
-    <Modal title="📋 구역 일괄 추가" onClose={onClose}>
+    <Modal title="구역 일괄 추가" onClose={onClose}>
       <div className="space-y-4">
         <HintBox title="입력 형식" lines={['한 줄에 구역코드, 구역이름 (쉼표 구분)', 'A, A동 일반구역', 'B, B동 냉동구역']} />
         <Field label="구역 목록 입력">
@@ -439,7 +439,7 @@ function PalletLocationTab() {
                       : !loc.is_active
                         ? 'bg-gray-800 border-gray-700 text-gray-600'
                         : pCount === 0
-                          ? 'bg-blue-900/40 border-blue-700 text-blue-300'
+                          ? 'bg-blue-900/40 border-blue-700 text-[#F59E0B]/80'
                           : pCount >= 8
                             ? 'bg-red-900/50 border-red-600 text-red-200'
                             : 'bg-amber-900/50 border-amber-600 text-amber-200'
@@ -563,7 +563,7 @@ function PalletLocationTab() {
                         </td>
                         <td className="py-1.5 text-right whitespace-nowrap">
                           <button onClick={() => handleEditSave(l)}
-                            className="text-xs text-blue-400 hover:text-blue-300 font-semibold px-2 py-1">저장</button>
+                            className="text-xs text-[#F59E0B] hover:text-[#FBBF24] font-semibold px-2 py-1">저장</button>
                           <button onClick={() => setEditingId(null)}
                             className="text-xs text-gray-600 hover:text-gray-400 px-2 py-1">취소</button>
                         </td>
@@ -591,7 +591,7 @@ function PalletLocationTab() {
                         </td>
                         <td className="py-2.5 text-right whitespace-nowrap">
                           <button onClick={() => startEdit(l)}
-                            className="text-xs text-gray-600 hover:text-blue-400 transition-colors px-2 py-1 opacity-0 group-hover:opacity-100">수정</button>
+                            className="text-xs text-gray-600 hover:text-[#FBBF24] transition-colors px-2 py-1 opacity-0 group-hover:opacity-100">수정</button>
                           <button onClick={() => handleDelete(l)}
                             className="text-xs text-gray-600 hover:text-red-400 transition-colors px-2 py-1 opacity-0 group-hover:opacity-100">삭제</button>
                         </td>
@@ -633,7 +633,7 @@ function BulkLocationModal({ zoneId, zoneName, existingCodes, existingSlots, onC
           .map(({ key, label }) => (
             <button key={key} onClick={() => setMode(key)}
               className={`px-4 py-2 rounded-xl text-sm font-semibold transition-colors ${
-                mode === key ? 'bg-blue-600 text-white' : 'bg-gray-800 text-gray-400 hover:text-white'}`}>
+                mode === key ? 'bg-[#F59E0B] text-black' : 'bg-gray-800 text-gray-400 hover:text-white'}`}>
               {label}
             </button>
           ))}
@@ -728,7 +728,7 @@ function PatternMode({ zoneId, zoneCode, existingCodes, existingSlots, onClose, 
                   className={`${h} ${txt} rounded font-bold flex items-center justify-center
                     border truncate px-0.5 ${r.skip
                       ? 'bg-yellow-900/20 border-yellow-700/40 text-yellow-600'
-                      : 'bg-blue-900/40 border-blue-700 text-blue-300'}`}>
+                      : 'bg-blue-900/40 border-blue-700 text-[#F59E0B]/80'}`}>
                   {r.code}
                 </div>
               )
@@ -1007,7 +1007,7 @@ function ProductLocationTab() {
                       </td>
                       <td className="py-2 text-right whitespace-nowrap">
                         <button onClick={() => handleEditSave(loc)}
-                          className="text-xs text-blue-400 hover:text-blue-300 font-semibold px-2 py-1">저장</button>
+                          className="text-xs text-[#F59E0B] hover:text-[#FBBF24] font-semibold px-2 py-1">저장</button>
                         <button onClick={() => setEditingId(null)}
                           className="text-xs text-gray-600 hover:text-gray-400 px-2 py-1">취소</button>
                       </td>
@@ -1034,7 +1034,7 @@ function ProductLocationTab() {
                       <td className="py-3 text-gray-500 text-xs">{loc.note ?? '—'}</td>
                       <td className="py-3 text-right whitespace-nowrap">
                         <button onClick={() => startEdit(loc)}
-                          className="text-xs text-gray-600 hover:text-blue-400 transition-colors px-2 py-1 opacity-0 group-hover:opacity-100">수정</button>
+                          className="text-xs text-gray-600 hover:text-[#FBBF24] transition-colors px-2 py-1 opacity-0 group-hover:opacity-100">수정</button>
                         <button onClick={() => handleDelete(loc)}
                           className="text-xs text-gray-600 hover:text-red-400 transition-colors px-2 py-1 opacity-0 group-hover:opacity-100">삭제</button>
                       </td>
@@ -1125,7 +1125,7 @@ function BulkProductLocationModal({ onClose, onSuccess }) {
   }
 
   return (
-    <Modal title="📋 상품 로케이션 일괄 추가" onClose={onClose}>
+    <Modal title="상품 로케이션 일괄 추가" onClose={onClose}>
       <div className="space-y-4">
         <HintBox title="입력 형식"
           lines={['한 줄에 코드, 이름, 비고(선택) (쉼표 구분)', 'SHELF-A1, A동 1번 선반, 냉장 전용', 'SHELF-B2, B동 2번 선반']} />

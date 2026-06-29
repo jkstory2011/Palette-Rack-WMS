@@ -20,53 +20,42 @@ export default async function RootLayout({ children }) {
   const isLoggedIn  = devAdmin || userPayload !== null
   const isAdmin     = devAdmin || userPayload?.role === 'admin'
   const displayName = devAdmin ? '개발관리자' : (userPayload?.displayName ?? null)
-  const position    = devAdmin ? '' : (userPayload?.position ?? '')
+  const position    = devAdmin ? 'DEV_ADMIN' : (userPayload?.position ?? '')
 
   return (
     <html lang="ko">
-      <body className="min-h-screen bg-gray-950">
+      <head>
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+        <link
+          href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap"
+          rel="stylesheet"
+        />
+      </head>
+      <body
+        className={isLoggedIn ? 'flex h-screen overflow-hidden antialiased' : 'min-h-screen antialiased'}
+        style={{ background: '#0C0E13', fontFamily: "'Space Grotesk', ui-sans-serif, sans-serif" }}
+      >
         {/* 전역 도트 그리드 배경 */}
-        <div className="fixed inset-0 pointer-events-none -z-10"
+        <div
+          className="fixed inset-0 pointer-events-none -z-10"
           style={{
-            backgroundImage: 'radial-gradient(circle, rgba(99,102,241,0.065) 1px, transparent 1px)',
+            backgroundImage: 'radial-gradient(circle, rgba(245,158,11,0.04) 1px, transparent 1px)',
             backgroundSize: '28px 28px',
-          }} />
+          }}
+        />
 
         {isLoggedIn && (
-          <header className="no-print sticky top-0 z-40 flex items-center justify-between px-5 h-[52px]"
-            style={{
-              background: 'rgba(4,6,16,0.92)',
-              backdropFilter: 'blur(24px)',
-              WebkitBackdropFilter: 'blur(24px)',
-              borderBottom: '1px solid rgba(255,255,255,0.06)',
-              boxShadow: '0 1px 0 rgba(99,102,241,0.08), 0 8px 32px rgba(0,0,0,0.4)',
-            }}>
-
-            {/* 브랜드 */}
-            <div className="flex items-center gap-2.5 shrink-0">
-              <span className="text-2xl leading-none">📦</span>
-              <div className="hidden sm:flex flex-col leading-none gap-0.5">
-                <span className="text-[14px] font-black text-white tracking-tight">Palette Rack WMS</span>
-                <span className="text-[9px] font-semibold tracking-[0.15em] uppercase"
-                  style={{color:'rgba(100,116,139,0.7)',fontFamily:'ui-monospace,monospace'}}>
-                  파렛트랙 입출고 관리 시스템
-                </span>
-              </div>
-            </div>
-
-            <Navigation
-              isAdmin={isAdmin}
-              displayName={displayName}
-              position={position}
-            />
-          </header>
+          <Navigation isAdmin={isAdmin} displayName={displayName} position={position} />
         )}
 
-        <main className={isLoggedIn ? 'p-4 sm:p-6' : ''}>
-          <ErrorBoundary>
-            {children}
-          </ErrorBoundary>
-        </main>
+        <div className={isLoggedIn ? 'flex-1 min-w-0 flex flex-col' : ''}>
+          <main className={isLoggedIn ? 'flex-1 overflow-y-auto p-5 sm:p-6' : ''}>
+            <ErrorBoundary>
+              {children}
+            </ErrorBoundary>
+          </main>
+        </div>
       </body>
     </html>
   )

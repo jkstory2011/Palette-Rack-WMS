@@ -2,6 +2,24 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ── Steel Ops 디자인 토큰 */
+:root {
+  --bg:      #0C0E13;
+  --s1:      #13161D;
+  --s2:      #1A1E28;
+  --s3:      #22273A;
+  --bd:      rgba(255,255,255,0.07);
+  --ac:      #F59E0B;
+  --ac-dim:  rgba(245,158,11,0.12);
+  --t1:      #E8EAED;
+  --t2:      #9AA5B4;
+  --t3:      #4E5A6A;
+  --ok:      #10B981;
+  --err:     #EF4444;
+  --inf:     #3B82F6;
+  --warn:    #F59E0B;
+}
+
 @layer base {
   /* 현장 작업자 환경: 큰 폰트, 높은 대비 */
   html {
@@ -9,11 +27,15 @@
   }
 
   body {
-    @apply bg-gray-950 text-gray-100 antialiased;
+    background: var(--bg);
+    color: var(--t1);
+    font-family: 'Space Grotesk', ui-sans-serif, system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
   }
 
-  /* 모든 버튼/인터랙티브 요소에 최소 터치 영역 보장 */
-  button, a, [role="button"] {
+  /* 버튼/인터랙티브 요소 터치 영역 (a 제외 — 사이드바 링크 오버라이드 허용) */
+  button, [role="button"] {
     min-height: 48px;
     min-width: 48px;
   }
@@ -72,11 +94,12 @@
     padding: 0.625rem 1.25rem;
   }
   .wms-btn-primary {
-    background: rgba(79,70,229,0.8);
-    color: white;
-    border: 1px solid rgba(99,102,241,0.4);
+    background: var(--ac);
+    color: #000;
+    border: 1px solid rgba(245,158,11,0.6);
+    font-weight: 700;
   }
-  .wms-btn-primary:hover:not(:disabled) { background: rgba(79,70,229,1); }
+  .wms-btn-primary:hover:not(:disabled) { background: #FBBF24; }
   .wms-btn-success {
     background: rgba(16,185,129,0.15);
     color: #34d399;

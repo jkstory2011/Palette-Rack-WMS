@@ -5,7 +5,7 @@ import { supabase } from '@/lib/supabase'
 import { generateOrderNo } from '@/lib/utils/pallet'
 
 const STATUS_LABEL = {
-  registered:  { label: '등록',   cls: 'bg-blue-600/20 text-blue-400 border-blue-600/40' },
+  registered:  { label: '등록',   cls: 'bg-blue-600/20 text-[#F59E0B] border-blue-600/40' },
   in_progress: { label: '생산중', cls: 'bg-yellow-600/20 text-yellow-400 border-yellow-600/40' },
   completed:   { label: '완료',   cls: 'bg-green-600/20 text-green-400 border-green-600/40' },
 }
@@ -155,7 +155,7 @@ function RegisterTab({ onDone }) {
         </div>
         <button type="button"
           onClick={() => setForm(f => ({ ...f, items: [...f.items, { productId: '', targetQty: '' }] }))}
-          className="text-sm text-blue-400 hover:text-blue-300 transition-colors">
+          className="text-sm text-[#F59E0B] hover:text-[#FBBF24] transition-colors">
           + 상품 추가
         </button>
       </div>
@@ -164,8 +164,8 @@ function RegisterTab({ onDone }) {
       {success && <p className="text-sm text-green-400 bg-green-900/20 border border-green-700 rounded-xl px-4 py-3">{success}</p>}
 
       <button type="submit" disabled={saving}
-        className="w-full py-4 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-lg font-bold transition-colors disabled:opacity-40">
-        {saving ? '등록 중...' : '🏭 생산 등록'}
+        className="w-full py-4 rounded-xl bg-[#F59E0B] hover:bg-[#FBBF24] text-black text-lg font-bold transition-colors disabled:opacity-40">
+        {saving ? '등록 중...' : '생산 등록'}
       </button>
     </form>
   )
@@ -253,7 +253,7 @@ function ProductionOrderCard({ order, onStart, onComplete, isUpdating }) {
       <div className="flex items-start justify-between gap-3">
         <div>
           <div className="flex items-center gap-2 flex-wrap">
-            <span className="font-mono text-blue-400 font-bold text-sm">{order.order_no}</span>
+            <span className="font-mono text-[#F59E0B] font-bold text-sm">{order.order_no}</span>
             <span className={`text-xs px-2 py-0.5 rounded-full border ${st.cls}`}>{st.label}</span>
             {order.client_name && <span className="wms-tag">{order.client_name}</span>}
           </div>
@@ -350,7 +350,7 @@ function CompletedTab() {
               <td className="py-3 text-gray-500 text-xs whitespace-nowrap">
                 {order.completed_at ? new Date(order.completed_at).toLocaleString('ko-KR') : '—'}
               </td>
-              <td className="py-3 font-mono text-xs text-blue-400">{order.order_no}</td>
+              <td className="py-3 font-mono text-xs text-[#F59E0B]">{order.order_no}</td>
               <td className="py-3 text-xs text-gray-400">{order.client_name ?? '—'}</td>
               <td className="py-3">
                 <ul className="space-y-0.5">

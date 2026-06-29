@@ -178,10 +178,10 @@ export default function ProductsPage() {
               onClick={() => setClientFilter(client)}
               className={`w-full text-left px-3 py-2 rounded-xl text-sm transition-colors truncate ${
                 clientFilter === client
-                  ? 'bg-blue-600 text-white font-semibold'
+                  ? 'bg-[#F59E0B] text-black font-semibold'
                   : 'text-gray-400 hover:bg-gray-700 hover:text-white'
               }`}>
-              {client === '전체' ? '📦 전체' : client}
+              {client === '전체' ? '전체' : client}
               {client !== '전체' && (
                 <span className="ml-1 text-xs text-gray-500">
                   ({products.filter(p => p.client_name === client).length})
@@ -361,7 +361,7 @@ export default function ProductsPage() {
                               onChange={e => setEditForm(f => ({ ...f, mgmt_location: e.target.value }))}
                               placeholder="A-01 등" />
                           ) : p.mgmt_location ? (
-                            <span className="text-blue-300 font-mono bg-blue-600/10 border border-blue-600/20 px-2 py-0.5 rounded">
+                            <span className="text-[#F59E0B] font-mono bg-[#F59E0B]/10 border border-[#F59E0B]/20 px-2 py-0.5 rounded">
                               {p.mgmt_location}
                             </span>
                           ) : <span className="text-gray-700">—</span>}
@@ -424,7 +424,7 @@ export default function ProductsPage() {
                           {isEditing ? (
                             <div className="flex gap-1 justify-end">
                               <button onClick={() => handleEditSave(p.id)}
-                                className="text-xs px-2 py-1 rounded bg-blue-600 hover:bg-blue-500 text-white font-semibold transition-colors">
+                                className="text-xs px-2 py-1 rounded bg-[#F59E0B] hover:bg-[#FBBF24] text-black font-semibold transition-colors">
                                 저장
                               </button>
                               <button onClick={() => setEditingId(null)}
@@ -435,7 +435,7 @@ export default function ProductsPage() {
                           ) : (
                             <div className="flex gap-1 justify-end">
                               <button onClick={() => startEdit(p)}
-                                className="text-xs text-gray-500 hover:text-blue-400 transition-colors px-2 py-1">
+                                className="text-xs text-gray-500 hover:text-[#FBBF24] transition-colors px-2 py-1">
                                 수정
                               </button>
                               <button onClick={() => handleDelete(p.id)}
@@ -690,7 +690,7 @@ function ExcelImportModal({ onClose, onSuccess }) {
           {rows.length > 0 && !result && (
             <button onClick={handleImport} disabled={importing || validCount === 0}
               className="wms-btn wms-btn-success">
-              {importing ? '등록 중...' : `📥 ${validCount}건 등록`}
+              {importing ? '등록 중...' : `${validCount}건 등록`}
             </button>
           )}
         </div>
@@ -730,13 +730,13 @@ function LocationModal({ product, locations, loading, onClose }) {
                 현재 적재 위치 · <span className="text-green-400 font-semibold">총 {totalQty.toLocaleString()} {product.unit}</span>
               </p>
               {product.mgmt_location && (
-                <span className="text-xs text-blue-300 font-mono bg-blue-600/10 border border-blue-600/20 px-2 py-0.5 rounded">
-                  📍 {product.mgmt_location}
+                <span className="text-xs text-[#F59E0B] font-mono bg-[#F59E0B]/10 border border-[#F59E0B]/20 px-2 py-0.5 rounded">
+                  {product.mgmt_location}
                 </span>
               )}
               {product.box_qty && (
                 <span className="text-xs text-yellow-400 bg-yellow-900/20 border border-yellow-800/30 px-2 py-0.5 rounded">
-                  📦 {product.box_qty}개입
+                  {product.box_qty}개입
                 </span>
               )}
             </div>
@@ -773,8 +773,8 @@ function LocationModal({ product, locations, loading, onClose }) {
                       <td className="py-3 text-xs text-gray-600">{idx + 1}</td>
                       <td className="py-3">
                         {it.pallets?.locations?.code ? (
-                          <span className="inline-block bg-blue-600/20 border border-blue-500/30
-                                           text-blue-300 font-mono font-bold text-xs px-3 py-1 rounded-lg">
+                          <span className="inline-block bg-[#F59E0B]/15 border border-[#F59E0B]/30
+                                           text-[#F59E0B]/80 font-mono font-bold text-xs px-3 py-1 rounded-lg">
                             {it.pallets.locations.code}
                           </span>
                         ) : <span className="text-gray-600 text-xs">위치 없음</span>}
