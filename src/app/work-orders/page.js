@@ -692,14 +692,16 @@ function WorkOrderDetailModal({ log, onClose }) {
 
   function handlePrint() {
     if (!printAreaRef.current) return
-    const cssLinks = Array.from(document.querySelectorAll('link[rel="stylesheet"]'))
-      .map(l => `<link rel="stylesheet" href="${l.href}">`).join('\n')
-    const inlineStyles = Array.from(document.querySelectorAll('style'))
-      .map(s => s.textContent).join('\n')
-    const win = window.open('', '', 'width=820,height=1100')
-    win.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>작업지시서</title>${cssLinks}<style>${inlineStyles}</style><style>html,body{background:#fff!important;color:#000!important;margin:0;padding:20px;}@media print{.bg-gray-50{background-color:#f9fafb!important;}.bg-gray-100{background-color:#f3f4f6!important;}@page{margin:15mm;}}</style></head><body>${printAreaRef.current.innerHTML}</body></html>`)
-    win.document.close()
-    setTimeout(() => { win.focus(); win.print(); win.close() }, 1500)
+    const printDiv = document.createElement('div')
+    printDiv.id = 'wms-order-print'
+    printDiv.appendChild(printAreaRef.current.cloneNode(true))
+    document.body.appendChild(printDiv)
+    document.body.classList.add('printing-order')
+    window.addEventListener('afterprint', () => {
+      document.body.classList.remove('printing-order')
+      if (document.body.contains(printDiv)) document.body.removeChild(printDiv)
+    }, { once: true })
+    window.print()
   }
 
   const dt         = new Date(log.createdAt)
@@ -856,14 +858,16 @@ function OrderPrintModal({ order, onClose }) {
 
   function handlePrint() {
     if (!printAreaRef.current) return
-    const cssLinks = Array.from(document.querySelectorAll('link[rel="stylesheet"]'))
-      .map(l => `<link rel="stylesheet" href="${l.href}">`).join('\n')
-    const inlineStyles = Array.from(document.querySelectorAll('style'))
-      .map(s => s.textContent).join('\n')
-    const win = window.open('', '', 'width=820,height=1100')
-    win.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>작업지시서</title>${cssLinks}<style>${inlineStyles}</style><style>html,body{background:#fff!important;color:#000!important;margin:0;padding:20px;}@media print{.bg-gray-50{background-color:#f9fafb!important;}.bg-gray-100{background-color:#f3f4f6!important;}@page{margin:15mm;}}</style></head><body>${printAreaRef.current.innerHTML}</body></html>`)
-    win.document.close()
-    setTimeout(() => { win.focus(); win.print(); win.close() }, 1500)
+    const printDiv = document.createElement('div')
+    printDiv.id = 'wms-order-print'
+    printDiv.appendChild(printAreaRef.current.cloneNode(true))
+    document.body.appendChild(printDiv)
+    document.body.classList.add('printing-order')
+    window.addEventListener('afterprint', () => {
+      document.body.classList.remove('printing-order')
+      if (document.body.contains(printDiv)) document.body.removeChild(printDiv)
+    }, { once: true })
+    window.print()
   }
 
   return (
