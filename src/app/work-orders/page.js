@@ -670,7 +670,8 @@ function LogsTab() {
 // 작업지시서 상세 팝업 + 출력
 // ══════════════════════════════════════════════════
 function WorkOrderDetailModal({ log, onClose }) {
-  const barcodeRef = useRef(null)
+  const barcodeRef   = useRef(null)
+  const printAreaRef = useRef(null)
 
   useEffect(() => {
     const handler = e => { if (e.key === 'Escape') onClose() }
@@ -690,9 +691,15 @@ function WorkOrderDetailModal({ log, onClose }) {
   }, [log.palletCode])
 
   function handlePrint() {
-    document.body.classList.add('printing-label')
-    window.print()
-    document.body.classList.remove('printing-label')
+    if (!printAreaRef.current) return
+    const cssLinks = Array.from(document.querySelectorAll('link[rel="stylesheet"]'))
+      .map(l => `<link rel="stylesheet" href="${l.href}">`).join('\n')
+    const inlineStyles = Array.from(document.querySelectorAll('style'))
+      .map(s => s.textContent).join('\n')
+    const win = window.open('', '', 'width=820,height=1100')
+    win.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>작업지시서</title>${cssLinks}<style>${inlineStyles}</style><style>html,body{background:#fff!important;color:#000!important;margin:0;padding:20px;}@media print{.bg-gray-50{background-color:#f9fafb!important;}.bg-gray-100{background-color:#f3f4f6!important;}@page{margin:15mm;}}</style></head><body>${printAreaRef.current.innerHTML}</body></html>`)
+    win.document.close()
+    setTimeout(() => { win.focus(); win.print(); win.close() }, 1500)
   }
 
   const dt         = new Date(log.createdAt)
@@ -718,7 +725,7 @@ function WorkOrderDetailModal({ log, onClose }) {
           </div>
         </div>
 
-        <div className="label-print-area overflow-y-auto bg-white text-black flex-1">
+        <div ref={printAreaRef} className="label-print-area overflow-y-auto bg-white text-black flex-1">
           <div className="px-6 pt-6 pb-4 border-b-2 border-black">
             <div className="flex items-start justify-between">
               <div>
@@ -822,7 +829,8 @@ function InfoCell({ label, value, large }) {
 // 오더 작업지시서 출력 모달
 // ══════════════════════════════════════════════════
 function OrderPrintModal({ order, onClose }) {
-  const barcodeRef = useRef(null)
+  const barcodeRef   = useRef(null)
+  const printAreaRef = useRef(null)
   const typeLabel  = order.type === 'inbound' ? '입고' : '출고'
   const typeEmoji  = order.type === 'inbound' ? '📥' : '🚛'
   const st         = STATUS_META[order.status] ?? STATUS_META.registered
@@ -847,9 +855,15 @@ function OrderPrintModal({ order, onClose }) {
   }, [order.order_no])
 
   function handlePrint() {
-    document.body.classList.add('printing-label')
-    window.print()
-    document.body.classList.remove('printing-label')
+    if (!printAreaRef.current) return
+    const cssLinks = Array.from(document.querySelectorAll('link[rel="stylesheet"]'))
+      .map(l => `<link rel="stylesheet" href="${l.href}">`).join('\n')
+    const inlineStyles = Array.from(document.querySelectorAll('style'))
+      .map(s => s.textContent).join('\n')
+    const win = window.open('', '', 'width=820,height=1100')
+    win.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>작업지시서</title>${cssLinks}<style>${inlineStyles}</style><style>html,body{background:#fff!important;color:#000!important;margin:0;padding:20px;}@media print{.bg-gray-50{background-color:#f9fafb!important;}.bg-gray-100{background-color:#f3f4f6!important;}@page{margin:15mm;}}</style></head><body>${printAreaRef.current.innerHTML}</body></html>`)
+    win.document.close()
+    setTimeout(() => { win.focus(); win.print(); win.close() }, 1500)
   }
 
   return (
@@ -872,7 +886,7 @@ function OrderPrintModal({ order, onClose }) {
         </div>
 
         {/* 인쇄 영역 */}
-        <div className="label-print-area overflow-y-auto bg-white text-black flex-1">
+        <div ref={printAreaRef} className="label-print-area overflow-y-auto bg-white text-black flex-1">
 
           {/* 상단 헤더 */}
           <div className="px-6 pt-6 pb-4 border-b-2 border-black">

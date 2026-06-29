@@ -211,26 +211,6 @@ export default function LoginPage() {
             </form>
           )}
 
-          {/* ── 회사 로고 */}
-          <div className="flex flex-col items-center gap-3 pt-5"
-            style={{ borderTop: '1px solid rgba(255,255,255,0.07)' }}>
-            <p className="text-[10px] tracking-[0.2em] uppercase font-mono"
-              style={{ color: 'rgba(71,85,105,0.8)' }}>
-              Operated by
-            </p>
-            <div className="rounded-2xl px-6 py-3 shadow-xl"
-              style={{
-                background: 'rgba(255,255,255,0.95)',
-                boxShadow: '0 4px 24px rgba(0,0,0,0.35), 0 0 0 1px rgba(255,255,255,0.08)',
-              }}>
-              <img
-                src="/jk-logo.png"
-                alt="제이케이스토리 Global Logistics"
-                className="h-12 w-auto object-contain"
-                style={{ maxWidth: '200px' }}
-              />
-            </div>
-          </div>
 
         </div>
       </div>
