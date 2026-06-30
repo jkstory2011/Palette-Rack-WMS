@@ -15,7 +15,6 @@ export default function ProductsPage() {
   const [saving, setSaving]                   = useState(false)
   const [error, setError]                     = useState('')
   const [search, setSearch]                   = useState('')
-  const [clientFilter, setClientFilter]       = useState('전체')
   const [selectedProduct, setSelectedProduct] = useState(null)
   const [rackLocations, setRackLocations]     = useState([])
   const [loadingModal, setLoadingModal]       = useState(false)
@@ -60,10 +59,6 @@ export default function ProductsPage() {
 
   useEffect(() => { fetchProducts() }, [])
 
-  // 화주사 목록 (중복 제거, '전체' 포함)
-  const clientList = ['전체', ...Array.from(
-    new Set(products.map(p => p.client_name).filter(Boolean))
-  ).sort()]
 
   const openModal = useCallback(async (product) => {
     setSelectedProduct(product)
@@ -158,9 +153,8 @@ export default function ProductsPage() {
     setSelectedIds(new Set()); fetchProducts()
   }
 
-  // 화주사 + 검색어 필터
+  // 검색어 필터
   const filtered = products.filter((p) => {
-    if (clientFilter !== '전체' && p.client_name !== clientFilter) return false
     if (!search) return true
     const q = search.toLowerCase()
     return (
@@ -173,36 +167,7 @@ export default function ProductsPage() {
   })
 
   return (
-    <div className="flex gap-5 items-start">
-
-      {/* ── 왼쪽 화주사 사이드바 */}
-      <aside className="w-44 shrink-0 sticky top-20">
-        <div className="wms-card p-3 space-y-1">
-          <p className="text-xs font-semibold text-gray-500 px-2 pb-1">화주사</p>
-          {clientList.map(client => (
-            <button key={client}
-              onClick={() => setClientFilter(client)}
-              className={`w-full text-left px-3 py-2 rounded-xl text-sm transition-colors truncate ${
-                clientFilter === client
-                  ? 'bg-[#F59E0B] text-black font-semibold'
-                  : 'text-gray-400 hover:bg-gray-700 hover:text-white'
-              }`}>
-              {client === '전체' ? '전체' : client}
-              {client !== '전체' && (
-                <span className="ml-1 text-xs text-gray-500">
-                  ({products.filter(p => p.client_name === client).length})
-                </span>
-              )}
-            </button>
-          ))}
-          {clientList.length === 1 && (
-            <p className="text-xs text-gray-600 px-2 py-1">등록된 화주사 없음</p>
-          )}
-        </div>
-      </aside>
-
-      {/* ── 오른쪽 메인 */}
-      <div className="flex-1 min-w-0 space-y-6">
+    <div className="max-w-5xl mx-auto space-y-6">
         <h1 className="text-3xl font-black text-white tracking-tight leading-none">상품 마스터</h1>
 
         {/* ── 등록 폼 */}
@@ -264,7 +229,7 @@ export default function ProductsPage() {
         <div className="wms-card space-y-4">
           <div className="flex items-center justify-between gap-3">
             <h2 className="text-base font-semibold text-gray-300">
-              {clientFilter === '전체' ? '전체 상품' : clientFilter}
+              전체 상품
               <span className="text-gray-500 font-normal ml-1">({filtered.length}종)</span>
             </h2>
             <input type="search" placeholder="코드, 이름, 바코드, 로케이션 검색..."
@@ -465,7 +430,6 @@ export default function ProductsPage() {
             </>
           )}
         </div>
-      </div>
 
       {/* ── 로케이션 팝업 */}
       {selectedProduct && (
