@@ -3,7 +3,7 @@
 import { usePathname } from 'next/navigation'
 import { useState } from 'react'
 
-// ── SVG 아이콘 (이모지 대신 벡터)
+// ── SVG 아이콘
 const IconGrid       = () => <svg width="15" height="15" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><rect x="1" y="1" width="6" height="6" rx="1"/><rect x="9" y="1" width="6" height="6" rx="1"/><rect x="1" y="9" width="6" height="6" rx="1"/><rect x="9" y="9" width="6" height="6" rx="1"/></svg>
 const IconInbound    = () => <svg width="15" height="15" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M8 1L1 5v1h14V5L8 1zM2 7v7h3v-4h6v4h3V7H2z"/></svg>
 const IconOutbound   = () => <svg width="15" height="15" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M2 4h12l1 2v6H1V6l1-2zm2-2h8v2H4V2z"/></svg>
@@ -15,22 +15,65 @@ const IconLog        = () => <svg width="15" height="15" viewBox="0 0 16 16" fil
 const IconAdmin      = () => <svg width="15" height="15" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M8 0a2.5 2.5 0 00-2.4 1.8L4 2.5 3 4l1.2 1.2A4 4 0 004 6.5a4 4 0 00.2 1.3L3 9l1 1.5 1.6-.7A4 4 0 008 11a4 4 0 002.4-.7l1.6.7L13 9l-1.2-1.2A4 4 0 0012 6.5a4 4 0 00-.2-1.3L13 4l-1-1.5-1.6.7A4 4 0 008 3a4 4 0 00-.6 0V0H8zm0 4a2.5 2.5 0 110 5 2.5 2.5 0 010-5z"/></svg>
 const IconLogout     = () => <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M6 2H3a1 1 0 00-1 1v10a1 1 0 001 1h3v-2H4V4h2V2zm4 3L14 8l-4 3V9H6V7h4V5z"/></svg>
 
-const OP_LINKS = [
-  { href: '/',            label: '조감도',    Icon: IconGrid       },
-  { href: '/inbound',     label: '입고',      Icon: IconInbound    },
-  { href: '/outbound',    label: '출고',      Icon: IconOutbound   },
-  { href: '/production',  label: 'B2B 생산',  Icon: IconProduction },
-  { href: '/work-orders', label: '작업지시서', Icon: IconOrder      },
+// ── 그룹 정의
+const BASE_GROUPS = [
+  {
+    key: 'ops',
+    label: '운영',
+    items: [
+      { href: '/',            label: '조감도',    Icon: IconGrid       },
+      { href: '/inbound',     label: '입고',      Icon: IconInbound    },
+      { href: '/outbound',    label: '출고',      Icon: IconOutbound   },
+      { href: '/production',  label: 'B2B 생산',  Icon: IconProduction },
+      { href: '/work-orders', label: '작업지시서', Icon: IconOrder      },
+    ],
+  },
+  {
+    key: 'mgmt',
+    label: '관리',
+    items: [
+      { href: '/products',  label: '상품',    Icon: IconProduct  },
+      { href: '/locations', label: '로케이션', Icon: IconLocation },
+      { href: '/logs',      label: '이력',    Icon: IconLog      },
+    ],
+  },
 ]
-const MGMT_LINKS = [
-  { href: '/products',  label: '상품',    Icon: IconProduct  },
-  { href: '/locations', label: '로케이션', Icon: IconLocation },
-  { href: '/logs',      label: '이력',    Icon: IconLog      },
-]
+
+const SYSTEM_GROUP = {
+  key: 'system',
+  label: '시스템',
+  items: [
+    {
+      href: '/admin',
+      label: '관리홈',
+      Icon: IconAdmin,
+      subItems: [{ href: '/admin/users', label: '회원관리' }],
+    },
+  ],
+}
 
 export default function Navigation({ isAdmin, displayName, position }) {
   const pathname = usePathname()
-  const isActive = (href) => href === '/' ? pathname === '/' : pathname.startsWith(href)
+
+  const isActive  = (href) => href === '/' ? pathname === '/' : pathname.startsWith(href)
+  const isExact   = (href) => pathname === href
+
+  const groups = isAdmin ? [...BASE_GROUPS, SYSTEM_GROUP] : BASE_GROUPS
+
+  // 현재 경로가 포함된 그룹만 초기 열림
+  const [expanded, setExpanded] = useState(() => {
+    const init = {}
+    groups.forEach(g => {
+      init[g.key] = g.items.some(item =>
+        isActive(item.href) || (item.subItems ?? []).some(s => isActive(s.href))
+      )
+    })
+    // 아무것도 열리지 않으면 운영만 열기
+    if (!Object.values(init).some(Boolean)) init['ops'] = true
+    return init
+  })
+
+  const toggle = (key) => setExpanded(prev => ({ ...prev, [key]: !prev[key] }))
 
   const initial = displayName ? displayName[0] : '?'
 
@@ -72,30 +115,23 @@ export default function Navigation({ isAdmin, displayName, position }) {
         </div>
       </div>
 
-      {/* ── 운영 */}
-      <div style={{ paddingTop: '20px' }}>
-        <SectionLabel>운영</SectionLabel>
-        {OP_LINKS.map(({ href, label, Icon }) => (
-          <NavItem key={href} href={href} active={isActive(href)} Icon={Icon}>{label}</NavItem>
+      {/* ── 메뉴 그룹 */}
+      <div style={{ flex: 1, paddingTop: '12px', overflowY: 'auto' }}>
+        {groups.map((group) => (
+          <NavGroup
+            key={group.key}
+            group={group}
+            expanded={!!expanded[group.key]}
+            onToggle={() => toggle(group.key)}
+            isActive={isActive}
+            isExact={isExact}
+            pathname={pathname}
+          />
         ))}
       </div>
 
-      {/* ── 관리 */}
-      <div style={{ paddingTop: '20px' }}>
-        <SectionLabel>관리</SectionLabel>
-        {MGMT_LINKS.map(({ href, label, Icon }) => (
-          <NavItem key={href} href={href} active={isActive(href)} Icon={Icon}>{label}</NavItem>
-        ))}
-        {isAdmin && (
-          <>
-            <NavItem href="/admin" active={pathname === '/admin'} Icon={IconAdmin}>관리홈</NavItem>
-            <SubNavItem href="/admin/users" active={isActive('/admin/users')}>회원관리</SubNavItem>
-          </>
-        )}
-      </div>
-
-      {/* ── 하단: 사용자 + 로그아웃 */}
-      <div style={{ marginTop: 'auto', padding: '12px', borderTop: '1px solid rgba(255,255,255,0.07)', flexShrink: 0 }}>
+      {/* ── 사용자 + 로그아웃 */}
+      <div style={{ padding: '12px', borderTop: '1px solid rgba(255,255,255,0.07)', flexShrink: 0 }}>
         <div style={{
           display: 'flex', alignItems: 'center', gap: '9px',
           padding: '8px', background: '#1A1E28', borderRadius: '8px',
@@ -123,15 +159,64 @@ export default function Navigation({ isAdmin, displayName, position }) {
   )
 }
 
-function SectionLabel({ children }) {
+// ── 접히는 그룹
+function NavGroup({ group, expanded, onToggle, isActive, isExact, pathname }) {
+  const hasActive = group.items.some(item =>
+    isActive(item.href) || (item.subItems ?? []).some(s => isActive(s.href))
+  )
+
   return (
-    <div style={{
-      fontSize: '10px', fontWeight: '600', letterSpacing: '0.14em',
-      textTransform: 'uppercase', color: '#4E5A6A',
-      fontFamily: "'JetBrains Mono', monospace",
-      padding: '0 16px 8px',
-    }}>
-      {children}
+    <div style={{ marginBottom: '6px' }}>
+      {/* 그룹 헤더 (클릭으로 토글) */}
+      <button
+        onClick={onToggle}
+        style={{
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          width: '100%', padding: '4px 16px 6px',
+          background: 'none', border: 'none', cursor: 'pointer',
+          fontSize: '10px', fontWeight: '600', letterSpacing: '0.14em',
+          textTransform: 'uppercase',
+          color: hasActive ? '#F59E0B' : '#4E5A6A',
+          fontFamily: "'JetBrains Mono', monospace",
+          transition: 'color 0.13s',
+          minHeight: 'auto', minWidth: 'auto',
+        }}
+        onMouseEnter={e => { if (!hasActive) e.currentTarget.style.color = '#9AA5B4' }}
+        onMouseLeave={e => { if (!hasActive) e.currentTarget.style.color = '#4E5A6A' }}
+      >
+        <span>{group.label}</span>
+        {/* 화살표 */}
+        <svg
+          width="10" height="10" viewBox="0 0 10 10" fill="currentColor"
+          style={{
+            transition: 'transform 0.2s ease',
+            transform: expanded ? 'rotate(0deg)' : 'rotate(-90deg)',
+            flexShrink: 0,
+          }}
+        >
+          <path d="M1 3l4 4 4-4" stroke="currentColor" strokeWidth="1.5" fill="none" strokeLinecap="round" strokeLinejoin="round"/>
+        </svg>
+      </button>
+
+      {/* 메뉴 아이템 목록 */}
+      {expanded && (
+        <div>
+          {group.items.map(({ href, label, Icon, subItems }) => {
+            // subItems가 있으면 정확히 일치할 때만 부모 활성, 없으면 startsWith
+            const active = subItems?.length ? pathname === href : isActive(href)
+            return (
+              <div key={href}>
+                <NavItem href={href} active={active} Icon={Icon}>{label}</NavItem>
+                {subItems?.map(sub => (
+                  <SubNavItem key={sub.href} href={sub.href} active={isActive(sub.href)}>
+                    {sub.label}
+                  </SubNavItem>
+                ))}
+              </div>
+            )
+          })}
+        </div>
+      )}
     </div>
   )
 }
@@ -200,7 +285,7 @@ function SubNavItem({ href, active, children }) {
         }
       }}
     >
-      <span style={{ fontSize: '11px', opacity: 0.4, flexShrink: 0, lineHeight: 1 }}>└</span>
+      <span style={{ fontSize: '11px', opacity: 0.35, flexShrink: 0, lineHeight: 1 }}>└</span>
       {children}
     </a>
   )
