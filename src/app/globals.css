@@ -85,6 +85,14 @@
     background: rgba(255,255,255,0.06);
     border-color: rgba(255,255,255,0.20);
   }
+  .wms-select option {
+    background-color: #1A1E28;
+    color: #E8EAED;
+  }
+  .wms-select option:checked {
+    background-color: #F59E0B;
+    color: #000;
+  }
 
   /* ── 버튼 ── */
   .wms-btn {
