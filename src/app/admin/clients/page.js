@@ -106,11 +106,13 @@ export default function ClientsPage() {
     const ext  = file.name.split('.').pop().toLowerCase()
     const safe = clientName.replace(/[^\x00-\x7F]/g, '').replace(/[^a-zA-Z0-9]/g, '_').replace(/_+/g, '_').slice(0, 20) || 'client'
     const path = `${Date.now()}_${safe}.${ext}`
-    const { error: upErr } = await supabase.storage
-      .from('client-docs').upload(path, file, { upsert: true })
-    if (upErr) throw upErr
-    const { data } = supabase.storage.from('client-docs').getPublicUrl(path)
-    return data.publicUrl
+    const fd = new FormData()
+    fd.append('file', file)
+    fd.append('path', path)
+    const res = await fetch('/api/admin/upload-license', { method: 'POST', body: fd })
+    const json = await res.json()
+    if (!res.ok) throw new Error(json.error)
+    return json.url
   }
 
   async function handleAdd(e) {
