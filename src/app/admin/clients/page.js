@@ -157,7 +157,7 @@ export default function ClientsPage() {
           <table className="w-full text-sm min-w-[900px]">
             <thead>
               <tr className="text-left border-b border-white/[0.08]">
-                {['화주사명','코드','대표자','사업자번호','전자우편','대표번호','담당자','연락처','취급상품/비고',''].map((h,i) => (
+                {['거래처코드','화주사명','대표자','사업자번호','전자우편','대표번호','담당자','연락처','취급상품/비고',''].map((h,i) => (
                   <th key={i} className="pb-2.5 wms-label pr-3">{h}</th>
                 ))}
               </tr>
@@ -165,7 +165,7 @@ export default function ClientsPage() {
             <tbody className="divide-y divide-white/[0.06]">
               {clients.map(c => editingId === c.id ? (
                 <tr key={c.id} className="bg-blue-950/30">
-                  {['name','code','ceo','business_no','email','main_phone','contact','phone','note'].map((k, i) => (
+                  {['code','name','ceo','business_no','email','main_phone','contact','phone','note'].map((k, i) => (
                     <td key={k} className="py-1.5 pr-2">
                       <input value={editForm[k]}
                         onChange={e => setEditForm(p => ({ ...p, [k]: e.target.value }))}
@@ -183,8 +183,8 @@ export default function ClientsPage() {
                 </tr>
               ) : (
                 <tr key={c.id} className="hover:bg-white/[0.025] transition-colors group">
+                  <td className="py-3 text-[#F59E0B] font-mono font-bold text-sm pr-3">{c.code ?? '—'}</td>
                   <td className="py-3 font-semibold text-white pr-3">{c.name}</td>
-                  <td className="py-3 text-gray-400 font-mono text-xs pr-3">{c.code ?? '—'}</td>
                   <td className="py-3 text-gray-300 pr-3">{c.ceo ?? '—'}</td>
                   <td className="py-3 text-gray-400 font-mono text-xs pr-3">{c.business_no ?? '—'}</td>
                   <td className="py-3 text-gray-400 text-xs pr-3">{c.email ?? '—'}</td>
