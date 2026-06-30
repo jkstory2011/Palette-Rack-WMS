@@ -55,7 +55,7 @@ export default function ZonePage() {
     setZone(zoneRow)
 
     // 2) 로케이션 + 파렛트 + 혼적 여부 판별용 pallet_items 개수만 조회
-    const { data: locs } = await supabase
+    let { data: locs, error: locErr } = await supabase
       .from('locations')
       .select(`
         id, code, grid_x, grid_y, aisle, is_active, slot_config,
@@ -68,6 +68,24 @@ export default function ZonePage() {
       .eq('is_active', true)
       .order('grid_y')
       .order('grid_x')
+
+    // slot_config 컬럼 미생성 시 해당 컬럼 없이 재시도
+    if (locErr) {
+      const { data: fallback } = await supabase
+        .from('locations')
+        .select(`
+          id, code, grid_x, grid_y, aisle, is_active,
+          pallets (
+            id, tier, side, status,
+            pallet_items ( id )
+          )
+        `)
+        .eq('zone_id', zoneRow.id)
+        .eq('is_active', true)
+        .order('grid_y')
+        .order('grid_x')
+      locs = (fallback ?? []).map(l => ({ ...l, slot_config: 'both' }))
+    }
 
     setLocations(locs ?? [])
     setLoading(false)

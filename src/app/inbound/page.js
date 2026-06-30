@@ -294,8 +294,13 @@ function InstructModal({ order, zones, onClose, onComplete }) {
     setAssigning(true)
     setError('')
     try {
-      const { data: locs } = await supabase
+      let { data: locs, error: locErr } = await supabase
         .from('locations').select('id, code, slot_config').eq('zone_id', zoneId).eq('is_active', true).order('code')
+      if (locErr) {
+        const { data: fb } = await supabase
+          .from('locations').select('id, code').eq('zone_id', zoneId).eq('is_active', true).order('code')
+        locs = (fb ?? []).map(l => ({ ...l, slot_config: 'both' }))
+      }
 
       if (!locs || locs.length === 0) { setError('선택한 구역에 로케이션이 없습니다.'); setAssigning(false); return }
 
