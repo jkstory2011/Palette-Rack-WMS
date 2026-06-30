@@ -87,7 +87,10 @@ export default function Navigation({ isAdmin, displayName, position }) {
           <NavItem key={href} href={href} active={isActive(href)} Icon={Icon}>{label}</NavItem>
         ))}
         {isAdmin && (
-          <NavItem href="/admin" active={isActive('/admin')} Icon={IconAdmin}>관리홈</NavItem>
+          <>
+            <NavItem href="/admin" active={pathname === '/admin'} Icon={IconAdmin}>관리홈</NavItem>
+            <SubNavItem href="/admin/users" active={isActive('/admin/users')}>회원관리</SubNavItem>
+          </>
         )}
       </div>
 
@@ -163,6 +166,41 @@ function NavItem({ href, active, Icon, children }) {
       }}
     >
       <span style={{ opacity: active ? 1 : 0.65, flexShrink: 0 }}><Icon /></span>
+      {children}
+    </a>
+  )
+}
+
+function SubNavItem({ href, active, children }) {
+  return (
+    <a
+      href={href}
+      style={{
+        display: 'flex', alignItems: 'center', gap: '7px',
+        padding: '7px 14px 7px 28px', margin: '0 4px',
+        borderRadius: '0 6px 6px 0',
+        color: active ? '#F59E0B' : '#4E5A6A',
+        background: active ? 'rgba(245,158,11,0.08)' : 'transparent',
+        borderLeft: active ? '2px solid #F59E0B' : '2px solid transparent',
+        fontSize: '12.5px', fontWeight: '500',
+        textDecoration: 'none', cursor: 'pointer',
+        transition: 'all 0.13s',
+        minHeight: '32px',
+      }}
+      onMouseEnter={e => {
+        if (!active) {
+          e.currentTarget.style.background = 'rgba(245,158,11,0.05)'
+          e.currentTarget.style.color = '#9AA5B4'
+        }
+      }}
+      onMouseLeave={e => {
+        if (!active) {
+          e.currentTarget.style.background = 'transparent'
+          e.currentTarget.style.color = '#4E5A6A'
+        }
+      }}
+    >
+      <span style={{ fontSize: '11px', opacity: 0.4, flexShrink: 0, lineHeight: 1 }}>└</span>
       {children}
     </a>
   )
