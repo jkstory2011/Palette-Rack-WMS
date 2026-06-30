@@ -233,7 +233,7 @@ export default function ProductsPage() {
 
           {error && <p className="text-sm text-red-400">{error}</p>}
 
-          <div className="flex justify-end gap-3">
+          <div className="flex justify-between">
             <button type="button" onClick={() => setShowExcelModal(true)}
               className="px-8 py-3 rounded-xl bg-emerald-700 hover:bg-emerald-600
                          text-white font-semibold transition-colors flex items-center gap-2">
