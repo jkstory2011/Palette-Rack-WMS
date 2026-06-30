@@ -130,19 +130,20 @@ export default function Navigation({ isAdmin, displayName, position }) {
         borderBottom: '1px solid rgba(255,255,255,0.07)',
       }}>
         <div style={{
-          width: '30px', height: '30px', flexShrink: 0,
-          background: '#F59E0B', borderRadius: '6px',
+          width: '32px', height: '32px', flexShrink: 0,
+          background: '#F59E0B', borderRadius: '7px',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
-          fontSize: '12px', fontWeight: '800', color: '#000',
+          fontSize: '13px', fontWeight: '900', color: '#000',
           fontFamily: "'JetBrains Mono', monospace",
+          letterSpacing: '-0.02em',
         }}>
           PR
         </div>
         <div>
-          <div style={{ fontSize: '13px', fontWeight: '700', color: '#E8EAED', letterSpacing: '-0.01em', lineHeight: '1.2' }}>
+          <div style={{ fontSize: '14px', fontWeight: '800', color: '#FFFFFF', letterSpacing: '-0.02em', lineHeight: '1.2' }}>
             Palette Rack WMS
           </div>
-          <div style={{ fontSize: '9.5px', color: '#4E5A6A', fontFamily: "'JetBrains Mono', monospace", letterSpacing: '0.06em' }}>
+          <div style={{ fontSize: '10.5px', color: '#94A3B8', fontFamily: "'JetBrains Mono', monospace", letterSpacing: '0.04em', marginTop: '1px' }}>
             파렛트랙 관리시스템
           </div>
         </div>
