@@ -12,7 +12,7 @@ const MIGRATION_SQL = `ALTER TABLE clients ADD COLUMN IF NOT EXISTS business_lic
 
 async function generateNextCode() {
   const { count } = await supabase.from('clients').select('*', { count: 'exact', head: true })
-  return `CL-${String((count ?? 0) + 1).padStart(3, '0')}`
+  return `JK-${String((count ?? 0) + 1).padStart(3, '0')}`
 }
 
 export default function ClientsPage() {
@@ -419,7 +419,7 @@ function ClientExcelModal({ onClose, onSuccess }) {
     const { count: base } = await supabase.from('clients').select('*', { count: 'exact', head: true })
     let autoIdx = (base ?? 0) + 1
     for (const row of valid) {
-      const code = row.code || `CL-${String(autoIdx).padStart(3, '0')}`
+      const code = row.code || `JK-${String(autoIdx).padStart(3, '0')}`
       const { error } = await supabase.from('clients').insert({
         name: row.name, code, ceo: row.ceo, business_no: row.business_no,
         email: row.email, main_phone: row.main_phone,
