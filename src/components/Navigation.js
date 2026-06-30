@@ -84,7 +84,7 @@ const SYSTEM_ITEMS = [
   {
     key: 'admin', href: '/admin', label: '관리홈', Icon: IconAdmin,
     subItems: [
-      { href: '/admin/users',   label: '회원관리' },
+      { href: '/admin/employees', label: '직원등록' },
       { href: '/admin/clients', label: '화주사등록' },
     ],
   },
