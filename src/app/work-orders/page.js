@@ -721,10 +721,7 @@ function WorkOrderDetailModal({ log, onClose }) {
             <span className="text-lg">{typeEmoji}</span>
             <span className="text-white font-bold">{typeLabel} 작업지시서</span>
           </div>
-          <div className="flex items-center gap-2">
-            <button onClick={handlePrint} className="wms-btn wms-btn-primary">🖨️ 출력</button>
-            <button onClick={onClose} className="text-slate-400 hover:text-white text-2xl leading-none ml-2">✕</button>
-          </div>
+          <button onClick={onClose} className="text-slate-400 hover:text-white text-2xl leading-none">✕</button>
         </div>
 
         <div ref={printAreaRef} className="label-print-area overflow-y-auto bg-white text-black flex-1">
@@ -883,10 +880,7 @@ function OrderPrintModal({ order, onClose }) {
             <span className="text-lg">{typeEmoji}</span>
             <span className="text-white font-bold">{typeLabel} 작업지시서 출력</span>
           </div>
-          <div className="flex items-center gap-2">
-            <button onClick={handlePrint} className="wms-btn wms-btn-primary">🖨️ 출력</button>
-            <button onClick={onClose} className="text-slate-400 hover:text-white text-2xl leading-none ml-2">✕</button>
-          </div>
+          <button onClick={onClose} className="text-slate-400 hover:text-white text-2xl leading-none">✕</button>
         </div>
 
         {/* 인쇄 영역 */}
