@@ -8,57 +8,100 @@ const EMPTY = {
   email: '', main_phone: '', contact: '', phone: '', note: '',
 }
 
+const MIGRATION_SQL = `ALTER TABLE clients ADD COLUMN IF NOT EXISTS business_license_url TEXT;`
+
 async function generateNextCode() {
-  const { count } = await supabase
-    .from('clients').select('*', { count: 'exact', head: true })
+  const { count } = await supabase.from('clients').select('*', { count: 'exact', head: true })
   return `CL-${String((count ?? 0) + 1).padStart(3, '0')}`
 }
 
 export default function ClientsPage() {
-  const [clients, setClients]           = useState([])
-  const [form, setForm]                 = useState(EMPTY)
-  const [saving, setSaving]             = useState(false)
-  const [error, setError]               = useState('')
-  const [editingId, setEditingId]       = useState(null)
-  const [editForm, setEditForm]         = useState({})
+  const [clients, setClients]               = useState([])
+  const [form, setForm]                     = useState(EMPTY)
+  const [licenseFile, setLicenseFile]       = useState(null)
+  const [licensePreview, setLicensePreview] = useState(null)
+  const [saving, setSaving]                 = useState(false)
+  const [error, setError]                   = useState('')
+  const [editingId, setEditingId]           = useState(null)
+  const [editForm, setEditForm]             = useState({})
+  const [editFile, setEditFile]             = useState(null)
+  const [editPreview, setEditPreview]       = useState(null)
   const [showExcelModal, setShowExcelModal] = useState(false)
+  const [viewImage, setViewImage]           = useState(null)
+  const [needsMigration, setNeedsMigration] = useState(false)
+  const [copied, setCopied]                 = useState(false)
+  const fileRef     = useRef(null)
+  const editFileRef = useRef(null)
+
+  // 스토리지 버킷 자동 생성
+  useEffect(() => {
+    fetch('/api/admin/setup-storage', { method: 'POST' }).catch(() => {})
+  }, [])
 
   const fetchClients = useCallback(async () => {
-    const { data } = await supabase.from('clients').select('*').order('name')
+    const { data, error: err } = await supabase.from('clients').select('*').order('name')
+    if (err?.message?.includes('business_license_url')) {
+      setNeedsMigration(true); return
+    }
+    setNeedsMigration(false)
     setClients(data ?? [])
   }, [])
 
   useEffect(() => { fetchClients() }, [fetchClients])
 
-  // 폼 초기화 시 코드 자동생성
   const resetForm = useCallback(async () => {
     const code = await generateNextCode()
     setForm({ ...EMPTY, code })
+    setLicenseFile(null)
+    setLicensePreview(null)
+    if (fileRef.current) fileRef.current.value = ''
   }, [])
 
   useEffect(() => { resetForm() }, [resetForm])
 
   const set = (k) => (v) => setForm(f => ({ ...f, [k]: v }))
 
+  function handleFileSelect(e, isEdit = false) {
+    const file = e.target.files[0]; if (!file) return
+    const preview = file.type === 'application/pdf'
+      ? null
+      : URL.createObjectURL(file)
+    if (isEdit) { setEditFile(file); setEditPreview(preview) }
+    else        { setLicenseFile(file); setLicensePreview(preview) }
+  }
+
+  async function uploadLicense(file, clientName) {
+    const ext  = file.name.split('.').pop().toLowerCase()
+    const path = `${Date.now()}_${clientName.replace(/[^a-zA-Z0-9가-힣]/g, '_')}.${ext}`
+    const { error: upErr } = await supabase.storage
+      .from('client-docs').upload(path, file, { upsert: true })
+    if (upErr) throw upErr
+    const { data } = supabase.storage.from('client-docs').getPublicUrl(path)
+    return data.publicUrl
+  }
+
   async function handleAdd(e) {
     e.preventDefault(); setError('')
     if (!form.name.trim()) return setError('화주사명은 필수입니다.')
     setSaving(true)
-    const { error: err } = await supabase.from('clients').insert({
-      name:        form.name.trim(),
-      code:        form.code.trim()        || null,
-      ceo:         form.ceo.trim()         || null,
-      business_no: form.business_no.trim() || null,
-      email:       form.email.trim()       || null,
-      main_phone:  form.main_phone.trim()  || null,
-      contact:     form.contact.trim()     || null,
-      phone:       form.phone.trim()       || null,
-      note:        form.note.trim()        || null,
-    })
-    setSaving(false)
-    if (err) return setError(err.code === '23505' ? '이미 존재하는 화주사명 또는 코드입니다.' : err.message)
-    await fetchClients()
-    resetForm()
+    try {
+      let license_url = null
+      if (licenseFile) license_url = await uploadLicense(licenseFile, form.name)
+
+      const { error: err } = await supabase.from('clients').insert({
+        name: form.name.trim(), code: form.code.trim() || null,
+        ceo: form.ceo.trim() || null, business_no: form.business_no.trim() || null,
+        email: form.email.trim() || null, main_phone: form.main_phone.trim() || null,
+        contact: form.contact.trim() || null, phone: form.phone.trim() || null,
+        note: form.note.trim() || null, business_license_url: license_url,
+      })
+      if (err) return setError(err.code === '23505' ? '이미 존재하는 화주사명 또는 코드입니다.' : err.message)
+      await fetchClients(); resetForm()
+    } catch (e) {
+      setError('업로드 중 오류: ' + e.message)
+    } finally {
+      setSaving(false)
+    }
   }
 
   function startEdit(c) {
@@ -68,31 +111,72 @@ export default function ClientsPage() {
       business_no: c.business_no ?? '', email: c.email ?? '',
       main_phone: c.main_phone ?? '', contact: c.contact ?? '',
       phone: c.phone ?? '', note: c.note ?? '',
+      business_license_url: c.business_license_url ?? '',
     })
+    setEditFile(null)
+    setEditPreview(c.business_license_url && !c.business_license_url.endsWith('.pdf')
+      ? c.business_license_url : null)
   }
 
   async function handleEditSave(c) {
     if (!editForm.name.trim()) return
-    const { error: err } = await supabase.from('clients').update({
-      name:        editForm.name.trim(),
-      code:        editForm.code.trim()        || null,
-      ceo:         editForm.ceo.trim()         || null,
-      business_no: editForm.business_no.trim() || null,
-      email:       editForm.email.trim()       || null,
-      main_phone:  editForm.main_phone.trim()  || null,
-      contact:     editForm.contact.trim()     || null,
-      phone:       editForm.phone.trim()       || null,
-      note:        editForm.note.trim()        || null,
-    }).eq('id', c.id)
-    if (err) { alert(err.code === '23505' ? '이미 존재하는 화주사명 또는 코드입니다.' : err.message); return }
-    setEditingId(null); fetchClients()
+    try {
+      let license_url = editForm.business_license_url || null
+      if (editFile) license_url = await uploadLicense(editFile, editForm.name)
+
+      const { error: err } = await supabase.from('clients').update({
+        name: editForm.name.trim(), code: editForm.code.trim() || null,
+        ceo: editForm.ceo.trim() || null, business_no: editForm.business_no.trim() || null,
+        email: editForm.email.trim() || null, main_phone: editForm.main_phone.trim() || null,
+        contact: editForm.contact.trim() || null, phone: editForm.phone.trim() || null,
+        note: editForm.note.trim() || null, business_license_url: license_url,
+      }).eq('id', c.id)
+      if (err) { alert(err.code === '23505' ? '이미 존재하는 화주사명 또는 코드입니다.' : err.message); return }
+      setEditingId(null); setEditFile(null); setEditPreview(null); fetchClients()
+    } catch (e) {
+      alert('업로드 중 오류: ' + e.message)
+    }
   }
 
   async function handleDelete(c) {
     if (!confirm(`'${c.name}' 화주사를 삭제할까요?`)) return
+    if (c.business_license_url) {
+      const path = c.business_license_url.split('/client-docs/')[1]
+      if (path) await supabase.storage.from('client-docs').remove([path])
+    }
     await supabase.from('clients').delete().eq('id', c.id)
     fetchClients()
   }
+
+  function copySQL() {
+    navigator.clipboard.writeText(MIGRATION_SQL)
+    setCopied(true); setTimeout(() => setCopied(false), 2000)
+  }
+
+  if (needsMigration) return (
+    <div className="max-w-2xl mx-auto space-y-5">
+      <h1 className="text-3xl font-black text-white tracking-tight leading-none">화주사 관리</h1>
+      <div className="wms-card space-y-4">
+        <p className="text-amber-400 font-semibold text-base">⚙️ DB 컬럼 추가 필요</p>
+        <p className="text-sm text-gray-400">사업자등록증 기능을 위해 아래 SQL을 <strong className="text-white">Supabase → SQL Editor</strong>에서 한 번만 실행해주세요.</p>
+        <div className="relative">
+          <pre className="bg-black/50 border border-white/10 rounded-xl p-4 pr-24 text-sm text-emerald-300 font-mono">{MIGRATION_SQL}</pre>
+          <button onClick={copySQL}
+            className="absolute top-3 right-3 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors
+                       bg-white/10 hover:bg-white/20 text-gray-300">
+            {copied ? '✓ 복사됨' : '복사'}
+          </button>
+        </div>
+        <a href="https://supabase.com/dashboard" target="_blank" rel="noopener"
+          className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-emerald-800 hover:bg-emerald-700
+                     text-white text-sm font-semibold transition-colors">
+          Supabase SQL Editor 열기 →
+        </a>
+        <button onClick={fetchClients}
+          className="wms-btn wms-btn-ghost ml-3">실행 완료 → 재시도</button>
+      </div>
+    </div>
+  )
 
   return (
     <div className="max-w-5xl mx-auto space-y-5">
@@ -105,31 +189,52 @@ export default function ClientsPage() {
       <form onSubmit={handleAdd} className="wms-card space-y-4">
         <h2 className="text-base font-semibold text-gray-300">신규 화주사 등록</h2>
 
-        {/* 1행: 화주사명·거래처코드·대표자·사업자번호 */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
           <FI label="화주사명 *"  placeholder="(주)OO물류"       value={form.name}        onChange={set('name')} />
           <div className="flex flex-col gap-1.5">
-            <label className="wms-label">거래처코드 <span className="text-gray-600 font-normal normal-case tracking-normal">(자동생성)</span></label>
+            <label className="wms-label">거래처코드 <span className="text-gray-600 font-normal normal-case tracking-normal">(자동)</span></label>
             <input value={form.code} onChange={e => setForm(f => ({ ...f, code: e.target.value }))}
               placeholder="CL-001" className="wms-input font-mono" />
           </div>
           <FI label="대표자"      placeholder="홍길동"            value={form.ceo}         onChange={set('ceo')} />
-          <FI label="사업자번호"   placeholder="000-00-00000"     value={form.business_no} onChange={set('business_no')} />
+          <FI label="사업자번호"  placeholder="000-00-00000"      value={form.business_no} onChange={set('business_no')} />
         </div>
 
-        {/* 2행: 전자우편·대표번호·담당자·연락처 */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-          <FI label="전자우편"    placeholder="info@company.com"  value={form.email}       onChange={set('email')} />
-          <FI label="대표번호"    placeholder="02-0000-0000"      value={form.main_phone}  onChange={set('main_phone')} />
-          <FI label="담당자"      placeholder="김담당"             value={form.contact}     onChange={set('contact')} />
-          <FI label="연락처"      placeholder="010-0000-0000"     value={form.phone}       onChange={set('phone')} />
+          <FI label="전자우편"   placeholder="info@company.com"   value={form.email}      onChange={set('email')} />
+          <FI label="대표번호"   placeholder="02-0000-0000"       value={form.main_phone} onChange={set('main_phone')} />
+          <FI label="담당자"     placeholder="김담당"              value={form.contact}    onChange={set('contact')} />
+          <FI label="연락처"     placeholder="010-0000-0000"      value={form.phone}      onChange={set('phone')} />
         </div>
 
-        {/* 3행: 취급상품/비고 (full width) */}
-        <div className="flex flex-col gap-1.5">
-          <label className="wms-label">취급상품 / 비고</label>
-          <input value={form.note} onChange={e => setForm(f => ({ ...f, note: e.target.value }))}
-            placeholder="굿즈, 올리브유 등" className="wms-input" />
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <FI label="취급상품 / 비고" placeholder="굿즈, 올리브유 등" value={form.note} onChange={set('note')} />
+
+          {/* 사업자등록증 업로드 */}
+          <div className="flex flex-col gap-1.5">
+            <label className="wms-label">사업자등록증 사본</label>
+            <div className="flex gap-2 items-start">
+              <button type="button" onClick={() => fileRef.current?.click()}
+                className="wms-btn wms-btn-ghost text-xs px-3 py-2 whitespace-nowrap">
+                📎 파일 선택
+              </button>
+              <input ref={fileRef} type="file"
+                accept="image/jpeg,image/png,image/webp,application/pdf"
+                className="hidden" onChange={e => handleFileSelect(e, false)} />
+              {licenseFile ? (
+                <div className="flex items-center gap-2 min-w-0">
+                  {licensePreview
+                    ? <img src={licensePreview} className="w-10 h-10 object-cover rounded-lg border border-white/10" />
+                    : <span className="text-2xl">📄</span>}
+                  <span className="text-xs text-gray-400 truncate">{licenseFile.name}</span>
+                  <button type="button" onClick={() => { setLicenseFile(null); setLicensePreview(null); if(fileRef.current) fileRef.current.value='' }}
+                    className="text-gray-600 hover:text-red-400 text-xs shrink-0">✕</button>
+                </div>
+              ) : (
+                <span className="text-xs text-gray-600 self-center">jpg, png, pdf 최대 10MB</span>
+              )}
+            </div>
+          </div>
         </div>
 
         {error && <p className="text-sm text-red-400">{error}</p>}
@@ -154,10 +259,10 @@ export default function ClientsPage() {
         {clients.length === 0 ? (
           <p className="text-gray-600 text-sm text-center py-8">등록된 화주사가 없습니다.</p>
         ) : (
-          <table className="w-full text-sm min-w-[900px]">
+          <table className="w-full text-sm min-w-[960px]">
             <thead>
               <tr className="text-left border-b border-white/[0.08]">
-                {['거래처코드','화주사명','대표자','사업자번호','전자우편','대표번호','담당자','연락처','취급상품/비고',''].map((h,i) => (
+                {['거래처코드','화주사명','대표자','사업자번호','전자우편','대표번호','담당자','연락처','취급상품/비고','등록증',''].map((h,i) => (
                   <th key={i} className="pb-2.5 wms-label pr-3">{h}</th>
                 ))}
               </tr>
@@ -169,15 +274,32 @@ export default function ClientsPage() {
                     <td key={k} className="py-1.5 pr-2">
                       <input value={editForm[k]}
                         onChange={e => setEditForm(p => ({ ...p, [k]: e.target.value }))}
-                        className="wms-input py-1.5 text-xs w-full min-w-[80px]"
+                        className="wms-input py-1.5 text-xs w-full min-w-[70px]"
                         autoFocus={i === 0}
                         onKeyDown={e => e.key === 'Enter' && handleEditSave(c)} />
                     </td>
                   ))}
+                  {/* 등록증 수정 */}
+                  <td className="py-1.5 pr-2">
+                    <div className="flex flex-col gap-1 items-start">
+                      {editPreview
+                        ? <img src={editPreview} className="w-10 h-10 object-cover rounded border border-white/10" />
+                        : editForm.business_license_url
+                          ? <span className="text-lg">📄</span>
+                          : null}
+                      <button type="button" onClick={() => editFileRef.current?.click()}
+                        className="text-[10px] text-gray-500 hover:text-amber-400 transition-colors">
+                        {editForm.business_license_url || editFile ? '교체' : '업로드'}
+                      </button>
+                      <input ref={editFileRef} type="file"
+                        accept="image/jpeg,image/png,image/webp,application/pdf"
+                        className="hidden" onChange={e => handleFileSelect(e, true)} />
+                    </div>
+                  </td>
                   <td className="py-1.5 text-right whitespace-nowrap">
                     <button onClick={() => handleEditSave(c)}
                       className="text-xs text-[#F59E0B] hover:text-[#FBBF24] font-semibold px-2 py-1">저장</button>
-                    <button onClick={() => setEditingId(null)}
+                    <button onClick={() => { setEditingId(null); setEditFile(null); setEditPreview(null) }}
                       className="text-xs text-gray-600 hover:text-gray-400 px-2 py-1">취소</button>
                   </td>
                 </tr>
@@ -192,6 +314,16 @@ export default function ClientsPage() {
                   <td className="py-3 text-gray-300 pr-3">{c.contact ?? '—'}</td>
                   <td className="py-3 text-gray-400 pr-3">{c.phone ?? '—'}</td>
                   <td className="py-3 text-gray-500 text-xs pr-3">{c.note ?? '—'}</td>
+                  <td className="py-3 pr-3">
+                    {c.business_license_url ? (
+                      c.business_license_url.endsWith('.pdf')
+                        ? <a href={c.business_license_url} target="_blank" rel="noopener"
+                            className="text-blue-400 hover:text-blue-300 text-lg" title="PDF 보기">📄</a>
+                        : <img src={c.business_license_url} onClick={() => setViewImage(c.business_license_url)}
+                            className="w-10 h-10 object-cover rounded-lg border border-white/10 cursor-pointer hover:border-amber-400/50 transition-colors"
+                            title="클릭하여 크게 보기" />
+                    ) : <span className="text-gray-700">—</span>}
+                  </td>
                   <td className="py-3 text-right whitespace-nowrap">
                     <button onClick={() => startEdit(c)}
                       className="text-xs text-gray-600 hover:text-[#FBBF24] transition-colors px-2 py-1 opacity-0 group-hover:opacity-100">수정</button>
@@ -204,6 +336,18 @@ export default function ClientsPage() {
           </table>
         )}
       </div>
+
+      {/* 이미지 뷰어 */}
+      {viewImage && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/90"
+          onClick={() => setViewImage(null)}>
+          <div className="relative max-w-3xl w-full" onClick={e => e.stopPropagation()}>
+            <button onClick={() => setViewImage(null)}
+              className="absolute -top-10 right-0 text-white text-2xl hover:text-gray-300">✕</button>
+            <img src={viewImage} className="w-full rounded-2xl shadow-2xl" />
+          </div>
+        </div>
+      )}
 
       {showExcelModal && (
         <ClientExcelModal
@@ -251,7 +395,7 @@ function ClientExcelModal({ onClose, onSuccess }) {
       const data = raw.slice(1).filter(r => r.some(c => String(c).trim()))
       if (!data.length) { setParseError('데이터가 없습니다. 양식을 확인해주세요.'); return }
       setRows(data.map((r, i) => ({
-        _row:        i + 2,
+        _row: i + 2,
         name:        String(r[0] ?? '').trim(),
         code:        String(r[1] ?? '').trim() || null,
         ceo:         String(r[2] ?? '').trim() || null,
@@ -272,11 +416,8 @@ function ClientExcelModal({ onClose, onSuccess }) {
     const valid = rows.filter(r => r._valid); if (!valid.length) return
     setImporting(true)
     let success = 0, skipped = 0; const errors = []
-
-    // 코드 없는 행은 자동생성
     const { count: base } = await supabase.from('clients').select('*', { count: 'exact', head: true })
     let autoIdx = (base ?? 0) + 1
-
     for (const row of valid) {
       const code = row.code || `CL-${String(autoIdx).padStart(3, '0')}`
       const { error } = await supabase.from('clients').insert({
@@ -295,7 +436,6 @@ function ClientExcelModal({ onClose, onSuccess }) {
 
   const validCount   = rows.filter(r => r._valid).length
   const invalidCount = rows.filter(r => !r._valid).length
-
   const COLS = ['화주사명','코드','대표자','사업자번호','전자우편','대표번호','담당자','연락처','취급상품/비고']
   const KEYS = ['name','code','ceo','business_no','email','main_phone','contact','phone','note']
 
@@ -305,7 +445,6 @@ function ClientExcelModal({ onClose, onSuccess }) {
       <div className="rounded-2xl w-full max-w-5xl shadow-2xl max-h-[90vh] flex flex-col"
            style={{background:'linear-gradient(135deg,rgba(15,20,40,0.98) 0%,rgba(8,12,24,0.99) 100%)',border:'1px solid rgba(255,255,255,0.10)'}}
            onClick={e => e.stopPropagation()}>
-
         <div className="flex items-center justify-between p-6" style={{borderBottom:'1px solid rgba(255,255,255,0.08)'}}>
           <div>
             <h2 className="text-lg font-bold text-white">📊 화주사 엑셀 일괄등록</h2>
@@ -313,22 +452,15 @@ function ClientExcelModal({ onClose, onSuccess }) {
           </div>
           <button onClick={onClose} className="text-slate-500 hover:text-white text-2xl leading-none ml-4">✕</button>
         </div>
-
         <div className="overflow-y-auto flex-1 p-6 space-y-5">
-          {/* ① 양식 다운로드 */}
           <div className="flex items-center gap-4">
             <div className="flex-1">
               <p className="text-sm font-semibold text-gray-300 mb-1">① 양식 다운로드</p>
               <p className="text-xs text-gray-500">열 순서: 화주사명* / 거래처코드 / 대표자 / 사업자번호 / 전자우편 / 대표번호 / 담당자 / 연락처 / 취급상품·비고</p>
             </div>
-            <button onClick={downloadTemplate} className="wms-btn wms-btn-ghost whitespace-nowrap">
-              ⬇ 양식 다운로드
-            </button>
+            <button onClick={downloadTemplate} className="wms-btn wms-btn-ghost whitespace-nowrap">⬇ 양식 다운로드</button>
           </div>
-
           <div className="border-t border-gray-800" />
-
-          {/* ② 파일 업로드 */}
           <div>
             <p className="text-sm font-semibold text-gray-300 mb-3">② 파일 업로드</p>
             <div onClick={() => fileRef.current?.click()}
@@ -339,8 +471,6 @@ function ClientExcelModal({ onClose, onSuccess }) {
             </div>
             {parseError && <p className="text-red-400 text-sm mt-2">{parseError}</p>}
           </div>
-
-          {/* ③ 미리보기 */}
           {rows.length > 0 && !result && (
             <div>
               <div className="flex items-center justify-between mb-3">
@@ -378,8 +508,6 @@ function ClientExcelModal({ onClose, onSuccess }) {
               </div>
             </div>
           )}
-
-          {/* 결과 */}
           {result && (
             <div className="bg-gray-800 rounded-xl p-4 space-y-1 text-sm">
               <p className="text-emerald-400 font-bold">✅ 등록 성공 {result.success}건</p>
@@ -388,19 +516,14 @@ function ClientExcelModal({ onClose, onSuccess }) {
             </div>
           )}
         </div>
-
-        {/* 푸터 */}
-        {!result && (
+        {!result ? (
           <div className="p-6 flex justify-end gap-3" style={{borderTop:'1px solid rgba(255,255,255,0.08)'}}>
             <button onClick={onClose} className="wms-btn wms-btn-ghost px-6">닫기</button>
-            <button onClick={handleImport}
-              disabled={importing || validCount === 0}
-              className="wms-btn wms-btn-primary px-8">
+            <button onClick={handleImport} disabled={importing || validCount === 0} className="wms-btn wms-btn-primary px-8">
               {importing ? '등록 중...' : `+ ${validCount}개 화주사 등록`}
             </button>
           </div>
-        )}
-        {result && (
+        ) : (
           <div className="p-6 flex justify-end" style={{borderTop:'1px solid rgba(255,255,255,0.08)'}}>
             <button onClick={onClose} className="wms-btn wms-btn-ghost px-6">닫기</button>
           </div>
