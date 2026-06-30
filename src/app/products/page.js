@@ -201,14 +201,7 @@ export default function ProductsPage() {
 
         {/* ── 등록 폼 */}
         <form onSubmit={handleSubmit} className="wms-card space-y-4">
-          <div className="flex items-center justify-between">
-            <h2 className="text-base font-semibold text-gray-300">신규 상품 등록</h2>
-            <button type="button" onClick={() => setShowExcelModal(true)}
-              className="px-4 py-2 rounded-xl bg-emerald-700 hover:bg-emerald-600
-                         text-white text-sm font-semibold transition-colors flex items-center gap-2">
-              📊 엑셀 일괄등록
-            </button>
-          </div>
+          <h2 className="text-base font-semibold text-gray-300">신규 상품 등록</h2>
 
           {/* 기본 정보 */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
@@ -240,7 +233,12 @@ export default function ProductsPage() {
 
           {error && <p className="text-sm text-red-400">{error}</p>}
 
-          <div className="flex justify-end">
+          <div className="flex justify-end gap-3">
+            <button type="button" onClick={() => setShowExcelModal(true)}
+              className="px-4 py-3 rounded-xl bg-emerald-700 hover:bg-emerald-600
+                         text-white text-sm font-semibold transition-colors flex items-center gap-2">
+              📊 엑셀 일괄등록
+            </button>
             <button type="submit" disabled={saving}
               className="px-8 py-3 rounded-xl bg-blue-600 hover:bg-blue-500
                          text-white font-semibold transition-colors disabled:opacity-40">
