@@ -295,7 +295,7 @@ function InstructModal({ order, zones, onClose, onComplete }) {
     setError('')
     try {
       const { data: locs } = await supabase
-        .from('locations').select('id, code').eq('zone_id', zoneId).eq('is_active', true).order('code')
+        .from('locations').select('id, code, slot_config').eq('zone_id', zoneId).eq('is_active', true).order('code')
 
       if (!locs || locs.length === 0) { setError('선택한 구역에 로케이션이 없습니다.'); setAssigning(false); return }
 
@@ -308,8 +308,9 @@ function InstructModal({ order, zones, onClose, onComplete }) {
 
       const slots = []
       outer: for (const loc of locs) {
+        const usableSides = loc.slot_config === 'L' ? ['L'] : loc.slot_config === 'R' ? ['R'] : SIDES
         for (const tier of TIERS) {
-          for (const side of SIDES) {
+          for (const side of usableSides) {
             if (!occSet.has(`${loc.id}-${tier}-${side}`)) {
               slots.push({ locationId: loc.id, locationCode: loc.code, tier, side })
               if (slots.length >= order.pallet_count) break outer

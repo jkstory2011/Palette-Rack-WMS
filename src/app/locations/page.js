@@ -527,7 +527,9 @@ function PalletLocationTab() {
                       </th>
                       <th className="pb-2.5 wms-label">코드</th><th className="pb-2.5 wms-label text-center">X(열)</th>
                       <th className="pb-2.5 wms-label text-center">Y(행)</th><th className="pb-2.5 wms-label">통로</th>
-                      <th className="pb-2.5 wms-label text-center">파렛트</th><th className="pb-2.5 wms-label text-center">상태</th>
+                      <th className="pb-2.5 wms-label text-center">파렛트</th>
+                      <th className="pb-2.5 wms-label text-center">슬롯</th>
+                      <th className="pb-2.5 wms-label text-center">상태</th>
                       <th className="pb-2.5" />
                     </tr>
                   </thead>
@@ -558,6 +560,19 @@ function PalletLocationTab() {
                         </td>
                         <td className="py-1.5 text-center text-gray-400">{activePallets(l)}</td>
                         <td className="py-1.5 text-center">
+                          <select value={l.slot_config || 'both'}
+                            onChange={async e => {
+                              await supabase.from('locations').update({ slot_config: e.target.value }).eq('id', l.id)
+                              fetchLocations(zoneId)
+                            }}
+                            className="wms-select py-1 px-2 text-xs rounded-lg w-28"
+                            onClick={e => e.stopPropagation()}>
+                            <option value="both">좌우 모두</option>
+                            <option value="L">좌측만</option>
+                            <option value="R">우측만</option>
+                          </select>
+                        </td>
+                        <td className="py-1.5 text-center">
                           <button onClick={() => handleToggleActive(l)}
                             className={`text-xs px-2 py-1 rounded-full font-semibold transition-colors ${
                               l.is_active ? 'bg-green-900/40 text-green-400' : 'bg-gray-700 text-gray-500'}`}>
@@ -583,6 +598,13 @@ function PalletLocationTab() {
                         <td className="py-2.5 text-center text-gray-400">{l.grid_y}</td>
                         <td className="py-2.5 text-gray-500 text-xs">{l.aisle ?? '—'}</td>
                         <td className="py-2.5 text-center text-gray-400">{activePallets(l)}</td>
+                        <td className="py-2.5 text-center">
+                          {(!l.slot_config || l.slot_config === 'both')
+                            ? <span className="text-xs text-gray-600">좌우</span>
+                            : <span className="text-xs font-semibold text-red-400">
+                                {l.slot_config === 'L' ? '좌측만' : '우측만'}
+                              </span>}
+                        </td>
                         <td className="py-2.5 text-center">
                           <button onClick={() => handleToggleActive(l)}
                             className={`text-xs px-2 py-1 rounded-full font-semibold transition-colors ${

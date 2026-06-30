@@ -13,12 +13,16 @@ import RackModal from '@/components/RackModal'
 //   일부 사용 → 'stored'   (초록)
 //   비어 있음 → 'empty'    (회색)
 // ──────────────────────────────────────────
+function slotCapacity(slot_config) {
+  return (!slot_config || slot_config === 'both') ? 8 : 4
+}
+
 function calcStatus(location) {
   const stored = (location.pallets ?? []).filter((p) => p.status === 'stored')
   if (stored.length === 0) return 'empty'
   const hasMixed = stored.some((p) => (p.pallet_items?.length ?? 0) > 1)
   if (hasMixed) return 'mixed'
-  if (stored.length >= 8) return 'full'
+  if (stored.length >= slotCapacity(location.slot_config)) return 'full'
   return 'stored'
 }
 
@@ -54,7 +58,7 @@ export default function ZonePage() {
     const { data: locs } = await supabase
       .from('locations')
       .select(`
-        id, code, grid_x, grid_y, aisle, is_active,
+        id, code, grid_x, grid_y, aisle, is_active, slot_config,
         pallets (
           id, tier, side, status,
           pallet_items ( id )
@@ -106,7 +110,7 @@ export default function ZonePage() {
   const locMap = new Map(locations.map((l) => [`${l.grid_x}-${l.grid_y}`, l]))
 
   // 구역 요약 통계
-  const totalSlots   = locations.length * 8
+  const totalSlots   = locations.reduce((s, l) => s + slotCapacity(l.slot_config), 0)
   const storedAll    = locations.flatMap((l) => (l.pallets ?? []).filter((p) => p.status === 'stored'))
   const usedSlots    = storedAll.length
   const mixedCount   = locations.filter((l) => calcStatus(l) === 'mixed').length
@@ -203,7 +207,7 @@ export default function ZonePage() {
                           {style.label}
                         </span>
                         <span className={`text-[10px] ${style.text} opacity-70`}>
-                          {stored.length}/8
+                          {stored.length}/{slotCapacity(loc.slot_config)}
                         </span>
                       </div>
                     </button>
