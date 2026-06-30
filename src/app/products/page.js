@@ -23,7 +23,13 @@ export default function ProductsPage() {
   const [selectedIds, setSelectedIds]         = useState(new Set())
   const [editingId, setEditingId]             = useState(null)
   const [editForm, setEditForm]               = useState({})
+  const [clientsList, setClientsList]         = useState([])
   const allCheckRef = useRef(null)
+
+  useEffect(() => {
+    supabase.from('clients').select('name').order('name')
+      .then(({ data }) => setClientsList((data ?? []).map(c => c.name)))
+  }, [])
 
   async function fetchProducts() {
     const { data } = await supabase
@@ -217,8 +223,15 @@ export default function ProductsPage() {
 
           {/* 추가 정보 */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-            <FieldInput label="화주사명" placeholder="(주)OO물류"
-              value={form.client_name} onChange={v => setForm(f => ({ ...f, client_name: v }))} />
+            <div className="flex flex-col gap-1.5">
+              <label className="text-xs font-medium text-gray-400">화주사명</label>
+              <input list="clients-list" value={form.client_name}
+                onChange={e => setForm(f => ({ ...f, client_name: e.target.value }))}
+                placeholder="(주)OO물류" className={inputCls} />
+              <datalist id="clients-list">
+                {clientsList.map(name => <option key={name} value={name} />)}
+              </datalist>
+            </div>
             <div className="flex flex-col gap-1.5">
               <label className="text-xs font-medium text-gray-400">유통/취급기한</label>
               <input type="date" value={form.expiry_at}
