@@ -194,7 +194,7 @@ export default function ClientsPage() {
           <div className="flex flex-col gap-1.5">
             <label className="wms-label">거래처코드 <span className="text-gray-600 font-normal normal-case tracking-normal">(자동)</span></label>
             <input value={form.code} onChange={e => setForm(f => ({ ...f, code: e.target.value }))}
-              placeholder="CL-001" className="wms-input font-mono" />
+              placeholder="JK-001" className="wms-input font-mono" />
           </div>
           <FI label="대표자"      placeholder="홍길동"            value={form.ceo}         onChange={set('ceo')} />
           <FI label="사업자번호"  placeholder="000-00-00000"      value={form.business_no} onChange={set('business_no')} />
@@ -377,7 +377,7 @@ function ClientExcelModal({ onClose, onSuccess }) {
     const XLSX = await import('xlsx')
     const ws = XLSX.utils.aoa_to_sheet([
       ['화주사명*','거래처코드','대표자','사업자번호','전자우편','대표번호','담당자','연락처','취급상품/비고'],
-      ['(주)샘플물류','CL-001','홍길동','123-45-67890','info@sample.com','02-1234-5678','김담당','010-1234-5678','굿즈, 음료'],
+      ['(주)샘플물류','JK-001','홍길동','123-45-67890','info@sample.com','02-1234-5678','김담당','010-1234-5678','굿즈, 음료'],
     ])
     ws['!cols'] = [20,14,10,16,22,14,10,14,20].map(wch => ({ wch }))
     const wb = XLSX.utils.book_new()
