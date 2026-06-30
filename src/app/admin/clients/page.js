@@ -104,7 +104,8 @@ export default function ClientsPage() {
 
   async function uploadLicense(file, clientName) {
     const ext  = file.name.split('.').pop().toLowerCase()
-    const path = `${Date.now()}_${clientName.replace(/[^a-zA-Z0-9가-힣]/g, '_')}.${ext}`
+    const safe = clientName.replace(/[^\x00-\x7F]/g, '').replace(/[^a-zA-Z0-9]/g, '_').replace(/_+/g, '_').slice(0, 20) || 'client'
+    const path = `${Date.now()}_${safe}.${ext}`
     const { error: upErr } = await supabase.storage
       .from('client-docs').upload(path, file, { upsert: true })
     if (upErr) throw upErr
