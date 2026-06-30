@@ -15,65 +15,94 @@ const IconLog        = () => <svg width="15" height="15" viewBox="0 0 16 16" fil
 const IconAdmin      = () => <svg width="15" height="15" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M8 0a2.5 2.5 0 00-2.4 1.8L4 2.5 3 4l1.2 1.2A4 4 0 004 6.5a4 4 0 00.2 1.3L3 9l1 1.5 1.6-.7A4 4 0 008 11a4 4 0 002.4-.7l1.6.7L13 9l-1.2-1.2A4 4 0 0012 6.5a4 4 0 00-.2-1.3L13 4l-1-1.5-1.6.7A4 4 0 008 3a4 4 0 00-.6 0V0H8zm0 4a2.5 2.5 0 110 5 2.5 2.5 0 010-5z"/></svg>
 const IconLogout     = () => <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M6 2H3a1 1 0 00-1 1v10a1 1 0 001 1h3v-2H4V4h2V2zm4 3L14 8l-4 3V9H6V7h4V5z"/></svg>
 
-// ── 그룹 정의
-const BASE_GROUPS = [
+// ── 메뉴 구조 정의
+const OP_ITEMS = [
   {
-    key: 'ops',
-    label: '운영',
-    items: [
-      { href: '/',            label: '조감도',    Icon: IconGrid       },
-      { href: '/inbound',     label: '입고',      Icon: IconInbound    },
-      { href: '/outbound',    label: '출고',      Icon: IconOutbound   },
-      { href: '/production',  label: 'B2B 생산',  Icon: IconProduction },
-      { href: '/work-orders', label: '작업지시서', Icon: IconOrder      },
+    key: 'dashboard', href: '/', label: '조감도', Icon: IconGrid,
+    subItems: [
+      { href: '/', label: '랙 현황' },
     ],
   },
   {
-    key: 'mgmt',
-    label: '관리',
-    items: [
-      { href: '/products',  label: '상품',    Icon: IconProduct  },
-      { href: '/locations', label: '로케이션', Icon: IconLocation },
-      { href: '/logs',      label: '이력',    Icon: IconLog      },
+    key: 'inbound', href: '/inbound', label: '입고', Icon: IconInbound,
+    subItems: [
+      { href: '/inbound', label: '입고등록' },
+      { href: '/inbound', label: '입고지시' },
+      { href: '/inbound', label: '입고완료' },
+    ],
+  },
+  {
+    key: 'outbound', href: '/outbound', label: '출고', Icon: IconOutbound,
+    subItems: [
+      { href: '/outbound', label: '출고등록' },
+      { href: '/outbound', label: '출고지시' },
+      { href: '/outbound', label: '출고완료' },
+    ],
+  },
+  {
+    key: 'production', href: '/production', label: 'B2B 생산', Icon: IconProduction,
+    subItems: [
+      { href: '/production', label: '생산등록' },
+      { href: '/production', label: '생산현황' },
+    ],
+  },
+  {
+    key: 'work-orders', href: '/work-orders', label: '작업지시서', Icon: IconOrder,
+    subItems: [
+      { href: '/work-orders', label: '오더관리' },
+      { href: '/work-orders', label: '작업이력' },
     ],
   },
 ]
 
-const SYSTEM_GROUP = {
-  key: 'system',
-  label: '시스템',
-  items: [
-    {
-      href: '/admin',
-      label: '관리홈',
-      Icon: IconAdmin,
-      subItems: [{ href: '/admin/users', label: '회원관리' }],
-    },
-  ],
-}
+const MGMT_ITEMS = [
+  {
+    key: 'products', href: '/products', label: '상품', Icon: IconProduct,
+    subItems: [
+      { href: '/products', label: '상품목록' },
+    ],
+  },
+  {
+    key: 'locations', href: '/locations', label: '로케이션', Icon: IconLocation,
+    subItems: [
+      { href: '/locations', label: '현황조회' },
+    ],
+  },
+  {
+    key: 'logs', href: '/logs', label: '이력', Icon: IconLog,
+    subItems: [
+      { href: '/logs', label: '이력조회' },
+    ],
+  },
+]
+
+const SYSTEM_ITEMS = [
+  {
+    key: 'admin', href: '/admin', label: '관리홈', Icon: IconAdmin,
+    subItems: [
+      { href: '/admin/users', label: '회원관리' },
+    ],
+  },
+]
 
 export default function Navigation({ isAdmin, displayName, position }) {
   const pathname = usePathname()
 
-  const isActive  = (href) => href === '/' ? pathname === '/' : pathname.startsWith(href)
-  const isExact   = (href) => pathname === href
+  const isActive = (href) => href === '/' ? pathname === '/' : pathname.startsWith(href)
 
-  const groups = isAdmin ? [...BASE_GROUPS, SYSTEM_GROUP] : BASE_GROUPS
-
-  // 현재 경로가 포함된 그룹만 초기 열림
-  const [expanded, setExpanded] = useState(() => {
-    const init = {}
-    groups.forEach(g => {
-      init[g.key] = g.items.some(item =>
-        isActive(item.href) || (item.subItems ?? []).some(s => isActive(s.href))
-      )
+  // 현재 경로에 해당하는 항목 key 자동 열기
+  const getInitialOpen = () => {
+    const all = [...OP_ITEMS, ...MGMT_ITEMS, ...SYSTEM_ITEMS]
+    const open = {}
+    all.forEach(item => {
+      if (isActive(item.href)) open[item.key] = true
     })
-    // 아무것도 열리지 않으면 운영만 열기
-    if (!Object.values(init).some(Boolean)) init['ops'] = true
-    return init
-  })
+    return open
+  }
 
-  const toggle = (key) => setExpanded(prev => ({ ...prev, [key]: !prev[key] }))
+  const [open, setOpen] = useState(getInitialOpen)
+
+  const toggle = (key) => setOpen(prev => ({ ...prev, [key]: !prev[key] }))
 
   const initial = displayName ? displayName[0] : '?'
 
@@ -115,23 +144,55 @@ export default function Navigation({ isAdmin, displayName, position }) {
         </div>
       </div>
 
-      {/* ── 메뉴 그룹 */}
-      <div style={{ flex: 1, paddingTop: '12px', overflowY: 'auto' }}>
-        {groups.map((group) => (
-          <NavGroup
-            key={group.key}
-            group={group}
-            expanded={!!expanded[group.key]}
-            onToggle={() => toggle(group.key)}
+      {/* ── 운영 */}
+      <div style={{ paddingTop: '20px' }}>
+        <SectionLabel>운영</SectionLabel>
+        {OP_ITEMS.map(item => (
+          <AccordionItem
+            key={item.key}
+            item={item}
+            expanded={!!open[item.key]}
+            onToggle={() => toggle(item.key)}
             isActive={isActive}
-            isExact={isExact}
             pathname={pathname}
           />
         ))}
       </div>
 
+      {/* ── 관리 */}
+      <div style={{ paddingTop: '20px' }}>
+        <SectionLabel>관리</SectionLabel>
+        {MGMT_ITEMS.map(item => (
+          <AccordionItem
+            key={item.key}
+            item={item}
+            expanded={!!open[item.key]}
+            onToggle={() => toggle(item.key)}
+            isActive={isActive}
+            pathname={pathname}
+          />
+        ))}
+      </div>
+
+      {/* ── 시스템 (관리자 전용) */}
+      {isAdmin && (
+        <div style={{ paddingTop: '20px' }}>
+          <SectionLabel>시스템</SectionLabel>
+          {SYSTEM_ITEMS.map(item => (
+            <AccordionItem
+              key={item.key}
+              item={item}
+              expanded={!!open[item.key]}
+              onToggle={() => toggle(item.key)}
+              isActive={isActive}
+              pathname={pathname}
+            />
+          ))}
+        </div>
+      )}
+
       {/* ── 사용자 + 로그아웃 */}
-      <div style={{ padding: '12px', borderTop: '1px solid rgba(255,255,255,0.07)', flexShrink: 0 }}>
+      <div style={{ marginTop: 'auto', padding: '12px', borderTop: '1px solid rgba(255,255,255,0.07)', flexShrink: 0 }}>
         <div style={{
           display: 'flex', alignItems: 'center', gap: '9px',
           padding: '8px', background: '#1A1E28', borderRadius: '8px',
@@ -159,135 +220,134 @@ export default function Navigation({ isAdmin, displayName, position }) {
   )
 }
 
-// ── 접히는 그룹
-function NavGroup({ group, expanded, onToggle, isActive, isExact, pathname }) {
-  const hasActive = group.items.some(item =>
-    isActive(item.href) || (item.subItems ?? []).some(s => isActive(s.href))
+// ── 섹션 라벨 (비클릭)
+function SectionLabel({ children }) {
+  return (
+    <div style={{
+      fontSize: '10px', fontWeight: '600', letterSpacing: '0.14em',
+      textTransform: 'uppercase', color: '#4E5A6A',
+      fontFamily: "'JetBrains Mono', monospace",
+      padding: '0 16px 6px',
+    }}>
+      {children}
+    </div>
   )
+}
+
+// ── 아코디언 상위 메뉴 + 서브메뉴
+function AccordionItem({ item, expanded, onToggle, isActive, pathname }) {
+  const { href, label, Icon, subItems } = item
+  const parentActive = isActive(href)
 
   return (
-    <div style={{ marginBottom: '6px' }}>
-      {/* 그룹 헤더 (클릭으로 토글) */}
-      <button
-        onClick={onToggle}
+    <div>
+      {/* 상위 메뉴 행 */}
+      <div
         style={{
-          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-          width: '100%', padding: '4px 16px 6px',
-          background: 'none', border: 'none', cursor: 'pointer',
-          fontSize: '10px', fontWeight: '600', letterSpacing: '0.14em',
-          textTransform: 'uppercase',
-          color: hasActive ? '#F59E0B' : '#4E5A6A',
-          fontFamily: "'JetBrains Mono', monospace",
-          transition: 'color 0.13s',
-          minHeight: 'auto', minWidth: 'auto',
+          display: 'flex', alignItems: 'center',
+          margin: '0 4px', borderRadius: '0 6px 6px 0',
+          borderLeft: parentActive ? '2px solid #F59E0B' : '2px solid transparent',
+          background: parentActive ? 'rgba(245,158,11,0.12)' : 'transparent',
+          transition: 'all 0.13s',
         }}
-        onMouseEnter={e => { if (!hasActive) e.currentTarget.style.color = '#9AA5B4' }}
-        onMouseLeave={e => { if (!hasActive) e.currentTarget.style.color = '#4E5A6A' }}
+        onMouseEnter={e => {
+          if (!parentActive) {
+            e.currentTarget.style.background = 'rgba(245,158,11,0.08)'
+          }
+        }}
+        onMouseLeave={e => {
+          if (!parentActive) {
+            e.currentTarget.style.background = 'transparent'
+          }
+        }}
       >
-        <span>{group.label}</span>
-        {/* 화살표 */}
-        <svg
-          width="10" height="10" viewBox="0 0 10 10" fill="currentColor"
+        {/* 아이콘 + 라벨 (클릭 시 토글) */}
+        <button
+          onClick={onToggle}
           style={{
-            transition: 'transform 0.2s ease',
-            transform: expanded ? 'rotate(0deg)' : 'rotate(-90deg)',
-            flexShrink: 0,
+            flex: 1, display: 'flex', alignItems: 'center', gap: '9px',
+            padding: '9px 0 9px 12px',
+            background: 'none', border: 'none', cursor: 'pointer',
+            color: parentActive ? '#F59E0B' : '#9AA5B4',
+            fontSize: '13.5px', fontWeight: '500',
+            textAlign: 'left', minHeight: '36px',
+            transition: 'color 0.13s',
           }}
         >
-          <path d="M1 3l4 4 4-4" stroke="currentColor" strokeWidth="1.5" fill="none" strokeLinecap="round" strokeLinejoin="round"/>
-        </svg>
-      </button>
+          <span style={{ opacity: parentActive ? 1 : 0.65, flexShrink: 0 }}><Icon /></span>
+          <span style={{ flex: 1 }}>{label}</span>
+        </button>
 
-      {/* 메뉴 아이템 목록 */}
-      {expanded && (
+        {/* 화살표 토글 버튼 */}
+        <button
+          onClick={onToggle}
+          style={{
+            background: 'none', border: 'none', cursor: 'pointer',
+            color: parentActive ? '#F59E0B' : '#4E5A6A',
+            padding: '9px 12px 9px 4px',
+            display: 'flex', alignItems: 'center',
+            minHeight: 'auto', minWidth: 'auto',
+            transition: 'color 0.13s',
+          }}
+        >
+          <svg
+            width="10" height="10" viewBox="0 0 10 10" fill="none"
+            stroke="currentColor" strokeWidth="1.5"
+            strokeLinecap="round" strokeLinejoin="round"
+            style={{
+              transition: 'transform 0.18s ease',
+              transform: expanded ? 'rotate(0deg)' : 'rotate(-90deg)',
+            }}
+          >
+            <path d="M1 3l4 4 4-4" />
+          </svg>
+        </button>
+      </div>
+
+      {/* 서브메뉴 */}
+      {expanded && subItems && (
         <div>
-          {group.items.map(({ href, label, Icon, subItems }) => {
-            // subItems가 있으면 정확히 일치할 때만 부모 활성, 없으면 startsWith
-            const active = subItems?.length ? pathname === href : isActive(href)
+          {subItems.map((sub, i) => {
+            const subActive = sub.href === '/'
+              ? pathname === '/'
+              : pathname === sub.href || pathname.startsWith(sub.href + '/')
             return (
-              <div key={href}>
-                <NavItem href={href} active={active} Icon={Icon}>{label}</NavItem>
-                {subItems?.map(sub => (
-                  <SubNavItem key={sub.href} href={sub.href} active={isActive(sub.href)}>
-                    {sub.label}
-                  </SubNavItem>
-                ))}
-              </div>
+              <a
+                key={i}
+                href={sub.href}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: '7px',
+                  padding: '6px 14px 6px 28px', margin: '0 4px',
+                  borderRadius: '0 6px 6px 0',
+                  color: subActive ? '#F59E0B' : '#4E5A6A',
+                  background: subActive ? 'rgba(245,158,11,0.08)' : 'transparent',
+                  borderLeft: subActive ? '2px solid #F59E0B' : '2px solid transparent',
+                  fontSize: '12.5px', fontWeight: '500',
+                  textDecoration: 'none', cursor: 'pointer',
+                  transition: 'all 0.13s',
+                  minHeight: '30px',
+                }}
+                onMouseEnter={e => {
+                  if (!subActive) {
+                    e.currentTarget.style.background = 'rgba(245,158,11,0.05)'
+                    e.currentTarget.style.color = '#9AA5B4'
+                  }
+                }}
+                onMouseLeave={e => {
+                  if (!subActive) {
+                    e.currentTarget.style.background = 'transparent'
+                    e.currentTarget.style.color = '#4E5A6A'
+                  }
+                }}
+              >
+                <span style={{ fontSize: '10px', opacity: 0.3, flexShrink: 0, lineHeight: 1 }}>└</span>
+                {sub.label}
+              </a>
             )
           })}
         </div>
       )}
     </div>
-  )
-}
-
-function NavItem({ href, active, Icon, children }) {
-  return (
-    <a
-      href={href}
-      style={{
-        display: 'flex', alignItems: 'center', gap: '9px',
-        padding: '9px 14px 9px 12px', margin: '0 4px',
-        borderRadius: '0 6px 6px 0',
-        color: active ? '#F59E0B' : '#9AA5B4',
-        background: active ? 'rgba(245,158,11,0.12)' : 'transparent',
-        borderLeft: active ? '2px solid #F59E0B' : '2px solid transparent',
-        fontSize: '13.5px', fontWeight: '500',
-        textDecoration: 'none', cursor: 'pointer',
-        transition: 'all 0.13s',
-        minHeight: '36px', minWidth: 0,
-      }}
-      onMouseEnter={e => {
-        if (!active) {
-          e.currentTarget.style.background = 'rgba(245,158,11,0.08)'
-          e.currentTarget.style.color = '#E8EAED'
-        }
-      }}
-      onMouseLeave={e => {
-        if (!active) {
-          e.currentTarget.style.background = 'transparent'
-          e.currentTarget.style.color = '#9AA5B4'
-        }
-      }}
-    >
-      <span style={{ opacity: active ? 1 : 0.65, flexShrink: 0 }}><Icon /></span>
-      {children}
-    </a>
-  )
-}
-
-function SubNavItem({ href, active, children }) {
-  return (
-    <a
-      href={href}
-      style={{
-        display: 'flex', alignItems: 'center', gap: '7px',
-        padding: '7px 14px 7px 28px', margin: '0 4px',
-        borderRadius: '0 6px 6px 0',
-        color: active ? '#F59E0B' : '#4E5A6A',
-        background: active ? 'rgba(245,158,11,0.08)' : 'transparent',
-        borderLeft: active ? '2px solid #F59E0B' : '2px solid transparent',
-        fontSize: '12.5px', fontWeight: '500',
-        textDecoration: 'none', cursor: 'pointer',
-        transition: 'all 0.13s',
-        minHeight: '32px',
-      }}
-      onMouseEnter={e => {
-        if (!active) {
-          e.currentTarget.style.background = 'rgba(245,158,11,0.05)'
-          e.currentTarget.style.color = '#9AA5B4'
-        }
-      }}
-      onMouseLeave={e => {
-        if (!active) {
-          e.currentTarget.style.background = 'transparent'
-          e.currentTarget.style.color = '#4E5A6A'
-        }
-      }}
-    >
-      <span style={{ fontSize: '11px', opacity: 0.35, flexShrink: 0, lineHeight: 1 }}>└</span>
-      {children}
-    </a>
   )
 }
 
