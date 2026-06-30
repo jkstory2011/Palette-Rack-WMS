@@ -41,7 +41,10 @@ const ACTION_META = {
 }
 
 export default function WorkOrdersPage() {
-  const [tab, setTab] = useState('orders')
+  const [tab, setTab] = useState(() => {
+    if (typeof window === 'undefined') return 'orders'
+    return new URLSearchParams(window.location.search).get('tab') || 'orders'
+  })
 
   return (
     <div className="max-w-5xl mx-auto space-y-5">

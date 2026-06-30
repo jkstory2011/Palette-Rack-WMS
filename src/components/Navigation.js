@@ -26,31 +26,32 @@ const OP_ITEMS = [
   {
     key: 'inbound', href: '/inbound', label: '입고', Icon: IconInbound,
     subItems: [
-      { href: '/inbound', label: '입고등록' },
-      { href: '/inbound', label: '입고지시' },
-      { href: '/inbound', label: '입고완료' },
+      { href: '/inbound?tab=register', label: '입고등록' },
+      { href: '/inbound?tab=instruct', label: '입고지시' },
+      { href: '/inbound?tab=complete', label: '입고완료' },
     ],
   },
   {
     key: 'outbound', href: '/outbound', label: '출고', Icon: IconOutbound,
     subItems: [
-      { href: '/outbound', label: '출고등록' },
-      { href: '/outbound', label: '출고지시' },
-      { href: '/outbound', label: '출고완료' },
+      { href: '/outbound?tab=register', label: '출고등록' },
+      { href: '/outbound?tab=instruct', label: '출고지시' },
+      { href: '/outbound?tab=complete', label: '출고완료' },
     ],
   },
   {
     key: 'production', href: '/production', label: 'B2B 생산', Icon: IconProduction,
     subItems: [
-      { href: '/production', label: '생산등록' },
-      { href: '/production', label: '생산현황' },
+      { href: '/production?tab=register',    label: '생산등록' },
+      { href: '/production?tab=in_progress', label: '생산현황' },
+      { href: '/production?tab=completed',   label: '생산완료' },
     ],
   },
   {
     key: 'work-orders', href: '/work-orders', label: '작업지시서', Icon: IconOrder,
     subItems: [
-      { href: '/work-orders', label: '오더관리' },
-      { href: '/work-orders', label: '작업이력' },
+      { href: '/work-orders?tab=orders', label: '오더관리' },
+      { href: '/work-orders?tab=logs',   label: '작업이력' },
     ],
   },
 ]
@@ -65,13 +66,16 @@ const MGMT_ITEMS = [
   {
     key: 'locations', href: '/locations', label: '로케이션', Icon: IconLocation,
     subItems: [
-      { href: '/locations', label: '현황조회' },
+      { href: '/locations?tab=zone',    label: '구역 현황' },
+      { href: '/locations?tab=pallet',  label: '파렛트랙' },
+      { href: '/locations?tab=product', label: '상품 로케이션' },
     ],
   },
   {
     key: 'logs', href: '/logs', label: '이력', Icon: IconLog,
     subItems: [
-      { href: '/logs', label: '이력조회' },
+      { href: '/logs?tab=inbound',  label: '입고 이력' },
+      { href: '/logs?tab=outbound', label: '출고 이력' },
     ],
   },
 ]

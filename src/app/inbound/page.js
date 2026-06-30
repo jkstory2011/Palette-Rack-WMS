@@ -9,7 +9,10 @@ const TIERS = [4, 3, 2, 1]
 const SIDES = ['L', 'R']
 
 export default function InboundPage() {
-  const [tab, setTab] = useState('register')
+  const [tab, setTab] = useState(() => {
+    if (typeof window === 'undefined') return 'register'
+    return new URLSearchParams(window.location.search).get('tab') || 'register'
+  })
 
   const TABS = [
     { key: 'register', label: '① 입고등록' },

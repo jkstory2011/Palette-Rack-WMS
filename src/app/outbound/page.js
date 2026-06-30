@@ -8,7 +8,10 @@ import { generateOrderNo } from '@/lib/utils/pallet'
 const SIDE_KO = { L: '좌(L)', R: '우(R)' }
 
 export default function OutboundPage() {
-  const [tab, setTab] = useState('register')
+  const [tab, setTab] = useState(() => {
+    if (typeof window === 'undefined') return 'register'
+    return new URLSearchParams(window.location.search).get('tab') || 'register'
+  })
 
   const TABS = [
     { key: 'register', label: '① 출고등록' },

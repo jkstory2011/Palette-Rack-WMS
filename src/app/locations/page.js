@@ -6,7 +6,10 @@ import { supabase } from '@/lib/supabase'
 const TABS = { ZONE: 'zone', PALLET: 'pallet', PRODUCT: 'product' }
 
 export default function LocationsPage() {
-  const [tab, setTab] = useState(TABS.ZONE)
+  const [tab, setTab] = useState(() => {
+    if (typeof window === 'undefined') return TABS.ZONE
+    return new URLSearchParams(window.location.search).get('tab') || TABS.ZONE
+  })
 
   return (
     <div className="max-w-5xl mx-auto space-y-5">

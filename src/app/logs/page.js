@@ -7,7 +7,10 @@ const TABS    = { IN: 'inbound', OUT: 'outbound' }
 const PAGE_SZ = 50
 
 export default function LogsPage() {
-  const [tab, setTab] = useState(TABS.IN)
+  const [tab, setTab] = useState(() => {
+    if (typeof window === 'undefined') return TABS.IN
+    return new URLSearchParams(window.location.search).get('tab') || TABS.IN
+  })
 
   return (
     <div className="max-w-5xl mx-auto space-y-5">
