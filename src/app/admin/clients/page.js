@@ -10,6 +10,38 @@ const EMPTY = {
 
 const MIGRATION_SQL = `ALTER TABLE clients ADD COLUMN IF NOT EXISTS business_license_url TEXT;`
 
+function formatBizNo(v) {
+  const d = v.replace(/\D/g, '').slice(0, 10)
+  if (d.length <= 3) return d
+  if (d.length <= 5) return `${d.slice(0,3)}-${d.slice(3)}`
+  return `${d.slice(0,3)}-${d.slice(3,5)}-${d.slice(5)}`
+}
+
+function formatPhone(v) {
+  const d = v.replace(/\D/g, '')
+  if (d.startsWith('02')) {
+    const n = d.slice(0, 10)
+    if (n.length <= 2) return n
+    if (n.length <= 6) return `${n.slice(0,2)}-${n.slice(2)}`
+    return `${n.slice(0,2)}-${n.slice(2,6)}-${n.slice(6)}`
+  }
+  if (d.length >= 1 && d[0] === '1' && d[1] !== '0') {
+    const n = d.slice(0, 8)
+    if (n.length <= 4) return n
+    return `${n.slice(0,4)}-${n.slice(4)}`
+  }
+  const n = d.slice(0, 11)
+  if (n.length <= 3) return n
+  if (n.length <= 7) return `${n.slice(0,3)}-${n.slice(3)}`
+  return `${n.slice(0,3)}-${n.slice(3,7)}-${n.slice(7)}`
+}
+
+function getFormatter(key) {
+  if (key === 'business_no') return formatBizNo
+  if (key === 'main_phone' || key === 'phone') return formatPhone
+  return null
+}
+
 async function generateNextCode() {
   const { count } = await supabase.from('clients').select('*', { count: 'exact', head: true })
   return `JK-${String((count ?? 0) + 1).padStart(3, '0')}`
@@ -197,14 +229,14 @@ export default function ClientsPage() {
               placeholder="JK-001" className="wms-input font-mono" />
           </div>
           <FI label="대표자"      placeholder="홍길동"            value={form.ceo}         onChange={set('ceo')} />
-          <FI label="사업자번호"  placeholder="000-00-00000"      value={form.business_no} onChange={set('business_no')} />
+          <FI label="사업자번호"  placeholder="000-00-00000"      value={form.business_no} onChange={v => setForm(f => ({ ...f, business_no: formatBizNo(v) }))} />
         </div>
 
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
           <FI label="전자우편"   placeholder="info@company.com"   value={form.email}      onChange={set('email')} />
-          <FI label="대표번호"   placeholder="02-0000-0000"       value={form.main_phone} onChange={set('main_phone')} />
+          <FI label="대표번호"   placeholder="02-0000-0000"       value={form.main_phone} onChange={v => setForm(f => ({ ...f, main_phone: formatPhone(v) }))} />
           <FI label="담당자"     placeholder="김담당"              value={form.contact}    onChange={set('contact')} />
-          <FI label="연락처"     placeholder="010-0000-0000"      value={form.phone}      onChange={set('phone')} />
+          <FI label="연락처"     placeholder="010-0000-0000"      value={form.phone}      onChange={v => setForm(f => ({ ...f, phone: formatPhone(v) }))} />
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -273,7 +305,10 @@ export default function ClientsPage() {
                   {['code','name','ceo','business_no','email','main_phone','contact','phone','note'].map((k, i) => (
                     <td key={k} className="py-1.5 pr-2">
                       <input value={editForm[k]}
-                        onChange={e => setEditForm(p => ({ ...p, [k]: e.target.value }))}
+                        onChange={e => {
+                          const fmt = getFormatter(k)
+                          setEditForm(p => ({ ...p, [k]: fmt ? fmt(e.target.value) : e.target.value }))
+                        }}
                         className="wms-input py-1.5 text-xs w-full min-w-[70px]"
                         autoFocus={i === 0}
                         onKeyDown={e => e.key === 'Enter' && handleEditSave(c)} />
