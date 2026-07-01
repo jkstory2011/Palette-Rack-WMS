@@ -20,7 +20,24 @@ INSERT INTO companies (code, name) VALUES
   ('OML', '주식회사 오마이물류')
 ON CONFLICT (code) DO NOTHING;
 
--- 3. 주요 테이블에 company_id 추가
+-- 3. employees 테이블이 없으면 먼저 생성
+CREATE TABLE IF NOT EXISTS employees (
+  id          SERIAL PRIMARY KEY,
+  emp_code    TEXT UNIQUE,
+  name        TEXT NOT NULL,
+  department  TEXT,
+  position    TEXT,
+  phone       TEXT,
+  email       TEXT,
+  hire_date   DATE,
+  note        TEXT,
+  created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+ALTER TABLE employees ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "allow_all" ON employees;
+CREATE POLICY "allow_all" ON employees FOR ALL TO anon, authenticated USING (true) WITH CHECK (true);
+
+-- 4. 주요 테이블에 company_id 추가
 ALTER TABLE wms_users        ADD COLUMN IF NOT EXISTS company_id INTEGER REFERENCES companies(id);
 ALTER TABLE zones             ADD COLUMN IF NOT EXISTS company_id INTEGER REFERENCES companies(id);
 ALTER TABLE products          ADD COLUMN IF NOT EXISTS company_id INTEGER REFERENCES companies(id);
@@ -30,7 +47,7 @@ ALTER TABLE production_orders ADD COLUMN IF NOT EXISTS company_id INTEGER REFERE
 ALTER TABLE clients           ADD COLUMN IF NOT EXISTS company_id INTEGER REFERENCES companies(id);
 ALTER TABLE employees         ADD COLUMN IF NOT EXISTS company_id INTEGER REFERENCES companies(id);
 
--- 4. 기존 데이터 → 제이케이스토리(id=1) 귀속
+-- 5. 기존 데이터 → 제이케이스토리(id=1) 귀속
 UPDATE zones             SET company_id = 1 WHERE company_id IS NULL;
 UPDATE products          SET company_id = 1 WHERE company_id IS NULL;
 UPDATE inbound_orders    SET company_id = 1 WHERE company_id IS NULL;
@@ -41,7 +58,7 @@ UPDATE employees         SET company_id = 1 WHERE company_id IS NULL;
 -- wms_users: superadmin은 NULL 유지, 나머지는 JK(1)로
 UPDATE wms_users SET company_id = 1 WHERE company_id IS NULL AND role != 'superadmin';
 
--- 5. superadmin 계정 생성
+-- 6. superadmin 계정 생성
 --    비밀번호: palette@super2024 (아래 해시는 bcrypt 10 라운드)
 INSERT INTO wms_users (username, display_name, password_hash, role, is_approved, is_active, company_id)
 VALUES (
