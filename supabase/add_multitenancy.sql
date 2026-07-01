@@ -17,7 +17,7 @@ CREATE POLICY "allow_all" ON companies FOR ALL TO anon, authenticated USING (tru
 -- 2. 회사 2개 등록
 INSERT INTO companies (code, name) VALUES
   ('JK', '주식회사 제이케이스토리'),
-  ('OM', '주식회사 오마이물류')
+  ('OML', '주식회사 오마이물류')
 ON CONFLICT (code) DO NOTHING;
 
 -- 3. 주요 테이블에 company_id 추가

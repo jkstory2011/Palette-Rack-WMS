@@ -386,7 +386,7 @@ CREATE POLICY "allow_all" ON companies FOR ALL TO anon, authenticated USING (tru
 
 INSERT INTO companies (code, name) VALUES
   ('JK', '주식회사 제이케이스토리'),
-  ('OM', '주식회사 오마이물류')
+  ('OML', '주식회사 오마이물류')
 ON CONFLICT (code) DO NOTHING;
 
 ALTER TABLE wms_users        ADD COLUMN IF NOT EXISTS company_id INTEGER REFERENCES companies(id);
