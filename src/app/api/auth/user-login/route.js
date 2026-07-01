@@ -36,12 +36,22 @@ export async function POST(req) {
 
   await db.from('wms_users').update({ last_login_at: new Date().toISOString() }).eq('id', user.id)
 
+  // 회사 정보 조회
+  let company = null
+  if (user.company_id) {
+    const { data: co } = await db.from('companies').select('id, code, name').eq('id', user.company_id).single()
+    company = co ?? null
+  }
+
   const token = await signToken({
     sub:         user.id,
     username:    user.username,
     displayName: user.display_name,
     role:        user.role,
     position:    user.position ?? '사용자',
+    companyId:   user.company_id ?? null,
+    companyCode: company?.code ?? null,
+    companyName: company?.name ?? null,
   })
 
   const res = NextResponse.json({ ok: true, role: user.role })

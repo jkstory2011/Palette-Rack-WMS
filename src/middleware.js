@@ -11,17 +11,14 @@ export async function middleware(request) {
     return NextResponse.next()
   }
 
-  // 개발관리자 쿠키 (일반 페이지 접근은 어디서든 허용)
-  const devAdmin = request.cookies.get('wms_auth')?.value === '1'
-
-  // JWT 인증
+  const devAdmin  = request.cookies.get('wms_auth')?.value === '1'
   const userToken = request.cookies.get('wms_user')?.value
   const user      = userToken ? await verifyToken(userToken) : null
 
-  const isAuthed = devAdmin || user !== null
-  const isAdmin = devAdmin || user?.role === 'admin'
+  const isAuthed      = devAdmin || user !== null
+  const isSuperAdmin  = user?.role === 'superadmin'
+  const isAdmin       = devAdmin || user?.role === 'admin' || isSuperAdmin
 
-  // 관리자 전용 경로
   if (ADMIN_PATHS.some(p => pathname.startsWith(p))) {
     if (!isAdmin) {
       const url = request.nextUrl.clone()

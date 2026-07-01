@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback, useRef } from 'react'
 import { supabase } from '@/lib/supabase'
 import { generatePalletCodes, generateOrderNo } from '@/lib/utils/pallet'
 import JsBarcode from 'jsbarcode'
+import { useCompany } from '@/context/CompanyContext'
 
 const TIERS = [4, 3, 2, 1]
 const SIDES = ['L', 'R']
@@ -56,11 +57,13 @@ function RegisterTab({ onDone }) {
   const [saving, setSaving] = useState(false)
   const [error, setError]   = useState('')
   const [success, setSuccess] = useState('')
+  const { company } = useCompany() ?? {}
 
   useEffect(() => {
-    supabase.from('products').select('id, code, name, unit').order('name')
-      .then(({ data }) => setProducts(data ?? []))
-  }, [])
+    let q = supabase.from('products').select('id, code, name, unit')
+    if (company?.id) q = q.eq('company_id', company.id)
+    q.order('name').then(({ data }) => setProducts(data ?? []))
+  }, [company?.id])
 
   function updateItem(i, field, val) {
     setForm(f => {
@@ -93,6 +96,7 @@ function RegisterTab({ onDone }) {
           scheduled_date: form.scheduledDate || null,
           pallet_count:   Number(form.palletCount),
           note:           form.note || null,
+          company_id:     company?.id ?? null,
         })
         .select('id').single()
       if (oErr) throw oErr
@@ -204,24 +208,28 @@ function InstructTab({ onDone }) {
   const [orders, setOrders]   = useState([])
   const [loading, setLoading] = useState(true)
   const [zones, setZones]     = useState([])
-  const [instructing, setInstructing] = useState(null)  // order being instructed
+  const [instructing, setInstructing] = useState(null)
+  const { company } = useCompany() ?? {}
 
   const fetchOrders = useCallback(async () => {
     setLoading(true)
-    const { data } = await supabase
+    let q = supabase
       .from('inbound_orders')
       .select(`id, order_no, status, client_name, scheduled_date, pallet_count, note, created_at,
                inbound_order_items ( qty_per_pallet, products ( name, unit ) )`)
       .eq('status', 'registered')
-      .order('created_at', { ascending: false })
+    if (company?.id) q = q.eq('company_id', company.id)
+    const { data } = await q.order('created_at', { ascending: false })
     setOrders(data ?? [])
     setLoading(false)
-  }, [])
+  }, [company?.id])
 
   useEffect(() => {
     fetchOrders()
-    supabase.from('zones').select('id, code, name').order('code').then(({ data }) => setZones(data ?? []))
-  }, [fetchOrders])
+    let zq = supabase.from('zones').select('id, code, name')
+    if (company?.id) zq = zq.eq('company_id', company.id)
+    zq.order('code').then(({ data }) => setZones(data ?? []))
+  }, [fetchOrders, company?.id])
 
   if (loading) return <p className="text-center text-slate-400 py-12 animate-pulse">불러오는 중...</p>
   if (orders.length === 0)
@@ -522,18 +530,20 @@ function CompleteTab({ onDone }) {
   const [loading, setLoading] = useState(true)
   const [completing, setCompleting] = useState(null)
   const [printPallets, setPrintPallets] = useState(null)
+  const { company } = useCompany() ?? {}
 
   const fetchOrders = useCallback(async () => {
     setLoading(true)
-    const { data } = await supabase
+    let q = supabase
       .from('inbound_orders')
       .select(`id, order_no, client_name, pallet_count, instructed_at,
                inbound_order_items ( qty_per_pallet, products ( name, unit ) )`)
       .eq('status', 'instructed')
-      .order('instructed_at', { ascending: false })
+    if (company?.id) q = q.eq('company_id', company.id)
+    const { data } = await q.order('instructed_at', { ascending: false })
     setOrders(data ?? [])
     setLoading(false)
-  }, [])
+  }, [company?.id])
 
   useEffect(() => { fetchOrders() }, [fetchOrders])
 

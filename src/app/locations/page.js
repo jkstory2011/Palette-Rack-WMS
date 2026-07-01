@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback, useMemo, useRef } from 'react'
 import { supabase } from '@/lib/supabase'
+import { useCompany } from '@/context/CompanyContext'
 
 const TABS = { ZONE: 'zone', PALLET: 'pallet', PRODUCT: 'product' }
 
@@ -53,6 +54,7 @@ function ZoneTab() {
   const [editForm, setEditForm]     = useState({ code: '', name: '' })
   const [selectedIds, setSelectedIds] = useState(new Set())
   const allCheckRef = useRef(null)
+  const { company } = useCompany() ?? {}
 
   useEffect(() => {
     if (!allCheckRef.current) return
@@ -79,10 +81,11 @@ function ZoneTab() {
   }
 
   const fetchZones = useCallback(async () => {
-    const { data } = await supabase.from('zones')
-      .select('id, code, name, locations(id)').order('code')
+    let q = supabase.from('zones').select('id, code, name, locations(id)')
+    if (company?.id) q = q.eq('company_id', company.id)
+    const { data } = await q.order('code')
     setZones(data ?? [])
-  }, [])
+  }, [company?.id])
 
   useEffect(() => { fetchZones() }, [fetchZones])
 
@@ -91,7 +94,7 @@ function ZoneTab() {
     if (!form.code.trim() || !form.name.trim()) return setError('구역코드와 구역명은 필수입니다.')
     setSaving(true)
     const { error: err } = await supabase.from('zones')
-      .insert({ code: form.code.trim().toUpperCase(), name: form.name.trim() })
+      .insert({ code: form.code.trim().toUpperCase(), name: form.name.trim(), company_id: company?.id ?? null })
     setSaving(false)
     if (err) return setError(err.code === '23505' ? '이미 존재하는 구역코드입니다.' : err.message)
     setForm({ code: '', name: '' }); fetchZones()
@@ -317,6 +320,7 @@ function PalletLocationTab() {
   const [editForm, setEditForm]     = useState({ code: '', grid_x: '', grid_y: '', aisle: '' })
   const [selectedIds, setSelectedIds] = useState(new Set())
   const allCheckRef = useRef(null)
+  const { company } = useCompany() ?? {}
 
   useEffect(() => {
     if (!allCheckRef.current) return
@@ -346,9 +350,10 @@ function PalletLocationTab() {
   }
 
   useEffect(() => {
-    supabase.from('zones').select('id, code, name').order('code')
-      .then(({ data }) => setZones(data ?? []))
-  }, [])
+    let q = supabase.from('zones').select('id, code, name')
+    if (company?.id) q = q.eq('company_id', company.id)
+    q.order('code').then(({ data }) => setZones(data ?? []))
+  }, [company?.id])
 
   const fetchLocations = useCallback(async (id) => {
     if (!id) { setLocations([]); return }

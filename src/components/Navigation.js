@@ -1,7 +1,8 @@
 'use client'
 
 import { usePathname } from 'next/navigation'
-import { useState } from 'react'
+import { useState, useRef, useEffect } from 'react'
+import { useCompany } from '@/context/CompanyContext'
 
 // ── SVG 아이콘
 const IconGrid       = () => <svg width="15" height="15" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><rect x="1" y="1" width="6" height="6" rx="1"/><rect x="9" y="1" width="6" height="6" rx="1"/><rect x="1" y="9" width="6" height="6" rx="1"/><rect x="9" y="9" width="6" height="6" rx="1"/></svg>
@@ -92,6 +93,7 @@ const SYSTEM_ITEMS = [
 
 export default function Navigation({ isAdmin, displayName, position }) {
   const pathname = usePathname()
+  const { company, isSuperAdmin, companies, switchCompany } = useCompany() ?? {}
 
   const isActive = (href) => href === '/' ? pathname === '/' : pathname.startsWith(href)
 
@@ -149,6 +151,13 @@ export default function Navigation({ isAdmin, displayName, position }) {
           </div>
         </div>
       </div>
+
+      {/* ── 회사 컨텍스트 */}
+      {isSuperAdmin ? (
+        <CompanySwitcher companies={companies ?? []} active={company} onSwitch={switchCompany} />
+      ) : company ? (
+        <CompanyBadge company={company} />
+      ) : null}
 
       {/* ── 운영 */}
       <div style={{ paddingTop: '20px' }}>
@@ -384,5 +393,195 @@ function LogoutBtn() {
     >
       <IconLogout />
     </button>
+  )
+}
+
+// ── 일반 사용자: 회사 배지
+function CompanyBadge({ company }) {
+  return (
+    <div style={{
+      margin: '10px 10px 0',
+      padding: '7px 10px',
+      background: 'rgba(245,158,11,0.08)',
+      border: '1px solid rgba(245,158,11,0.2)',
+      borderRadius: '7px',
+      display: 'flex', alignItems: 'center', gap: '7px',
+    }}>
+      <div style={{
+        width: '22px', height: '22px', flexShrink: 0,
+        background: '#F59E0B', borderRadius: '5px',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        fontSize: '10px', fontWeight: '900', color: '#000',
+        fontFamily: "'JetBrains Mono', monospace",
+      }}>
+        {company.code}
+      </div>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{
+          fontSize: '10px', color: '#F59E0B',
+          fontFamily: "'JetBrains Mono', monospace",
+          letterSpacing: '0.06em', fontWeight: '700',
+        }}>
+          COMPANY
+        </div>
+        <div style={{
+          fontSize: '11px', color: '#CBD5E1', fontWeight: '600',
+          whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+        }}>
+          {company.name}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ── Superadmin 전용: 회사 스위처 드롭다운
+function CompanySwitcher({ companies, active, onSwitch }) {
+  const [open, setOpen] = useState(false)
+  const ref = useRef(null)
+
+  useEffect(() => {
+    function handleClick(e) {
+      if (ref.current && !ref.current.contains(e.target)) setOpen(false)
+    }
+    document.addEventListener('mousedown', handleClick)
+    return () => document.removeEventListener('mousedown', handleClick)
+  }, [])
+
+  return (
+    <div ref={ref} style={{ margin: '10px 10px 0', position: 'relative' }}>
+      <button
+        onClick={() => setOpen(p => !p)}
+        style={{
+          width: '100%',
+          padding: '7px 10px',
+          background: open ? 'rgba(245,158,11,0.14)' : 'rgba(245,158,11,0.08)',
+          border: `1px solid ${open ? 'rgba(245,158,11,0.4)' : 'rgba(245,158,11,0.2)'}`,
+          borderRadius: '7px',
+          display: 'flex', alignItems: 'center', gap: '7px',
+          cursor: 'pointer', transition: 'all 0.15s',
+        }}
+      >
+        {/* 슈퍼어드민 뱃지 */}
+        <div style={{
+          width: '22px', height: '22px', flexShrink: 0,
+          background: '#7C3AED', borderRadius: '5px',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          fontSize: '9px', fontWeight: '900', color: '#fff',
+          fontFamily: "'JetBrains Mono', monospace", letterSpacing: '-0.02em',
+        }}>
+          SA
+        </div>
+        <div style={{ flex: 1, minWidth: 0, textAlign: 'left' }}>
+          <div style={{
+            fontSize: '10px', color: '#A78BFA',
+            fontFamily: "'JetBrains Mono', monospace",
+            letterSpacing: '0.06em', fontWeight: '700',
+          }}>
+            SUPERADMIN
+          </div>
+          <div style={{
+            fontSize: '11px', color: '#CBD5E1', fontWeight: '600',
+            whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+          }}>
+            {active ? active.name : '전체 회사 (공통)'}
+          </div>
+        </div>
+        {/* 화살표 */}
+        <svg
+          width="12" height="12" viewBox="0 0 12 12" fill="#6B7280"
+          style={{ flexShrink: 0, transition: 'transform 0.2s', transform: open ? 'rotate(180deg)' : 'rotate(0deg)' }}
+        >
+          <path d="M2 4l4 4 4-4" stroke="#6B7280" strokeWidth="1.5" fill="none" strokeLinecap="round" strokeLinejoin="round"/>
+        </svg>
+      </button>
+
+      {/* 드롭다운 */}
+      {open && (
+        <div style={{
+          position: 'absolute', top: 'calc(100% + 4px)', left: 0, right: 0, zIndex: 50,
+          background: '#1A1E28',
+          border: '1px solid rgba(255,255,255,0.1)',
+          borderRadius: '8px',
+          overflow: 'hidden',
+          boxShadow: '0 8px 24px rgba(0,0,0,0.5)',
+        }}>
+          {/* 전체 보기 옵션 */}
+          <button
+            onClick={() => { onSwitch(null); setOpen(false) }}
+            style={{
+              width: '100%', padding: '9px 12px',
+              display: 'flex', alignItems: 'center', gap: '8px',
+              background: active === null ? 'rgba(124,58,237,0.18)' : 'transparent',
+              border: 'none', cursor: 'pointer',
+              borderBottom: '1px solid rgba(255,255,255,0.06)',
+              transition: 'background 0.12s',
+            }}
+            onMouseEnter={e => { if (active !== null) e.currentTarget.style.background = 'rgba(255,255,255,0.05)' }}
+            onMouseLeave={e => { if (active !== null) e.currentTarget.style.background = 'transparent' }}
+          >
+            <div style={{
+              width: '18px', height: '18px', flexShrink: 0,
+              borderRadius: '4px', background: 'rgba(124,58,237,0.3)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              fontSize: '9px', color: '#A78BFA', fontWeight: '700',
+              fontFamily: "'JetBrains Mono', monospace",
+            }}>
+              ALL
+            </div>
+            <span style={{ fontSize: '12px', color: active === null ? '#A78BFA' : '#9AA5B4', fontWeight: active === null ? '700' : '500' }}>
+              전체 회사 (공통)
+            </span>
+            {active === null && (
+              <svg width="10" height="10" viewBox="0 0 10 10" fill="#A78BFA" style={{ marginLeft: 'auto' }}>
+                <path d="M2 5l2 2 4-4" stroke="#A78BFA" strokeWidth="1.5" fill="none" strokeLinecap="round"/>
+              </svg>
+            )}
+          </button>
+
+          {/* 회사 목록 */}
+          {companies.map(co => (
+            <button
+              key={co.id}
+              onClick={() => { onSwitch(co); setOpen(false) }}
+              style={{
+                width: '100%', padding: '9px 12px',
+                display: 'flex', alignItems: 'center', gap: '8px',
+                background: active?.id === co.id ? 'rgba(245,158,11,0.12)' : 'transparent',
+                border: 'none', cursor: 'pointer',
+                borderBottom: '1px solid rgba(255,255,255,0.04)',
+                transition: 'background 0.12s',
+              }}
+              onMouseEnter={e => { if (active?.id !== co.id) e.currentTarget.style.background = 'rgba(255,255,255,0.05)' }}
+              onMouseLeave={e => { if (active?.id !== co.id) e.currentTarget.style.background = 'transparent' }}
+            >
+              <div style={{
+                width: '18px', height: '18px', flexShrink: 0,
+                borderRadius: '4px', background: active?.id === co.id ? '#F59E0B' : 'rgba(245,158,11,0.2)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                fontSize: '8px', color: active?.id === co.id ? '#000' : '#F59E0B', fontWeight: '900',
+                fontFamily: "'JetBrains Mono', monospace",
+              }}>
+                {co.code}
+              </div>
+              <div style={{ flex: 1, minWidth: 0, textAlign: 'left' }}>
+                <div style={{
+                  fontSize: '11.5px', color: active?.id === co.id ? '#F59E0B' : '#CBD5E1',
+                  fontWeight: active?.id === co.id ? '700' : '500',
+                  whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+                }}>
+                  {co.name}
+                </div>
+              </div>
+              {active?.id === co.id && (
+                <svg width="10" height="10" viewBox="0 0 10 10" fill="#F59E0B" style={{ marginLeft: 'auto', flexShrink: 0 }}>
+                  <path d="M2 5l2 2 4-4" stroke="#F59E0B" strokeWidth="1.5" fill="none" strokeLinecap="round"/>
+                </svg>
+              )}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
   )
 }

@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback, useRef } from 'react'
 import { supabase } from '@/lib/supabase'
+import { useCompany } from '@/context/CompanyContext'
 
 const EMPTY = {
   emp_code: '', name: '', department: '', position: '',
@@ -57,14 +58,16 @@ export default function EmployeesPage() {
   const [dbReady, setDbReady]       = useState(true)
   const [copied, setCopied]         = useState(false)
   const [showExcelModal, setShowExcelModal] = useState(false)
+  const { company } = useCompany() ?? {}
 
   const fetchEmployees = useCallback(async () => {
-    const { data, error: err } = await supabase
-      .from('employees').select('*').order('emp_code')
+    let q = supabase.from('employees').select('*')
+    if (company?.id) q = q.eq('company_id', company.id)
+    const { data, error: err } = await q.order('emp_code')
     if (err?.code === '42P01') { setDbReady(false); return }
     setDbReady(true)
     setEmployees(data ?? [])
-  }, [])
+  }, [company?.id])
 
   useEffect(() => { fetchEmployees() }, [fetchEmployees])
 
@@ -90,6 +93,7 @@ export default function EmployeesPage() {
       email:      form.email.trim()      || null,
       hire_date:  form.hire_date         || null,
       note:       form.note.trim()       || null,
+      company_id: company?.id ?? null,
     })
     setSaving(false)
     if (err) return setError(err.code === '23505' ? '이미 존재하는 직원코드입니다.' : err.message)
@@ -367,6 +371,7 @@ function EmpExcelModal({ onClose, onSuccess }) {
   const [importing, setImporting]   = useState(false)
   const [result, setResult]         = useState(null)
   const [parseError, setParseError] = useState('')
+  const { company } = useCompany() ?? {}
 
   useEffect(() => {
     const h = e => { if (e.key === 'Escape') onClose() }
@@ -425,6 +430,7 @@ function EmpExcelModal({ onClose, onSuccess }) {
         emp_code, name: row.name, department: row.department,
         position: row.position, phone: row.phone,
         email: row.email, hire_date: row.hire_date || null, note: row.note,
+        company_id: company?.id ?? null,
       })
       if (!error) { success++; autoIdx++ }
       else if (error.code === '23505') skipped++

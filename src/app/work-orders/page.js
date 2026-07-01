@@ -3,6 +3,7 @@
 import { useEffect, useState, useRef, useCallback } from 'react'
 import { supabase } from '@/lib/supabase'
 import JsBarcode from 'jsbarcode'
+import { useCompany } from '@/context/CompanyContext'
 
 const SIDE_KO = { L: '좌', R: '우' }
 
@@ -79,23 +80,25 @@ function OrdersTab() {
   const [orders, setOrders]         = useState([])
   const [loading, setLoading]       = useState(true)
   const [typeFilter, setTypeFilter] = useState('all')
-  const [statusFilter, setStatusFilter] = useState('active')  // active | all
-  const [actionTarget, setActionTarget] = useState(null)      // { order, action }
-  const [printTarget, setPrintTarget]   = useState(null)      // order
+  const [statusFilter, setStatusFilter] = useState('active')
+  const [actionTarget, setActionTarget] = useState(null)
+  const [printTarget, setPrintTarget]   = useState(null)
+  const { company } = useCompany() ?? {}
 
   const fetchOrders = useCallback(async () => {
     setLoading(true)
+    let inbQ = supabase.from('inbound_orders')
+      .select(`id, order_no, status, status_reason, client_name,
+               scheduled_date, pallet_count, note, created_at, instructed_at,
+               inbound_order_items ( qty_per_pallet, products ( name, unit ) )`)
+    let outQ = supabase.from('outbound_orders')
+      .select(`id, order_no, status, status_reason, client_name,
+               scheduled_date, note, created_at, instructed_at,
+               outbound_order_items ( required_qty, products ( name, unit ) )`)
+    if (company?.id) { inbQ = inbQ.eq('company_id', company.id); outQ = outQ.eq('company_id', company.id) }
     const [{ data: inbound }, { data: outbound }] = await Promise.all([
-      supabase.from('inbound_orders')
-        .select(`id, order_no, status, status_reason, client_name,
-                 scheduled_date, pallet_count, note, created_at, instructed_at,
-                 inbound_order_items ( qty_per_pallet, products ( name, unit ) )`)
-        .order('created_at', { ascending: false }),
-      supabase.from('outbound_orders')
-        .select(`id, order_no, status, status_reason, client_name,
-                 scheduled_date, note, created_at, instructed_at,
-                 outbound_order_items ( required_qty, products ( name, unit ) )`)
-        .order('created_at', { ascending: false }),
+      inbQ.order('created_at', { ascending: false }),
+      outQ.order('created_at', { ascending: false }),
     ])
 
     const toRow = (o, type) => ({
@@ -112,7 +115,7 @@ function OrdersTab() {
 
     setOrders(merged)
     setLoading(false)
-  }, [])
+  }, [company?.id])
 
   useEffect(() => { fetchOrders() }, [fetchOrders])
 
@@ -482,6 +485,7 @@ function LogsTab() {
   const [typeFilter, setTypeFilter]   = useState('all')
   const [periodFilter, setPeriodFilter] = useState('7')
   const [selected, setSelected]       = useState(null)
+  const { company } = useCompany() ?? {}
 
   async function fetchLogs(period) {
     setLoading(true)
@@ -489,19 +493,15 @@ function LogsTab() {
     since.setDate(since.getDate() - Number(period))
     const sinceISO = since.toISOString()
 
+    const base = `id, created_at, operator, tier, side,
+                 pallets ( code, pallet_items ( qty, products ( code, name, unit ) ) ),
+                 locations ( code, zones ( code, name ) )`
+    let inbQ = supabase.from('inbound_logs').select(base).gte('created_at', sinceISO)
+    let outQ = supabase.from('outbound_logs').select(base).gte('created_at', sinceISO)
+
     const [{ data: inbound }, { data: outbound }] = await Promise.all([
-      supabase.from('inbound_logs')
-        .select(`id, created_at, operator, tier, side,
-                 pallets ( code, pallet_items ( qty, products ( code, name, unit ) ) ),
-                 locations ( code, zones ( code, name ) )`)
-        .gte('created_at', sinceISO)
-        .order('created_at', { ascending: false }),
-      supabase.from('outbound_logs')
-        .select(`id, created_at, operator, tier, side,
-                 pallets ( code, pallet_items ( qty, products ( code, name, unit ) ) ),
-                 locations ( code, zones ( code, name ) )`)
-        .gte('created_at', sinceISO)
-        .order('created_at', { ascending: false }),
+      inbQ.order('created_at', { ascending: false }),
+      outQ.order('created_at', { ascending: false }),
     ])
 
     const toRow = (log, type) => ({

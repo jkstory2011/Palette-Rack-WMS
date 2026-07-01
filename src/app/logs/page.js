@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from 'react'
 import { supabase } from '@/lib/supabase'
+import { useCompany } from '@/context/CompanyContext'
 
 const TABS    = { IN: 'inbound', OUT: 'outbound' }
 const PAGE_SZ = 50
@@ -52,11 +53,12 @@ function InboundLogs() {
   const [dateFrom, setDateFrom] = useState(defaultDateFrom())
   const [dateTo,   setDateTo]   = useState(todayStr())
   const [keyword,  setKeyword]  = useState('')
+  const { company } = useCompany() ?? {}
 
   const fetch = useCallback(async () => {
     setLoading(true)
     setDbError('')
-    const { data, error } = await supabase
+    let q = supabase
       .from('inbound_logs')
       .select(`
         id, tier, side, created_at, operator, note,
@@ -71,13 +73,12 @@ function InboundLogs() {
       `)
       .gte('created_at', `${dateFrom}T00:00:00`)
       .lte('created_at', `${dateTo}T23:59:59`)
-      .order('created_at', { ascending: false })
-      .limit(PAGE_SZ)
+    const { data, error } = await q.order('created_at', { ascending: false }).limit(PAGE_SZ)
 
     if (error) setDbError(`DB 오류: ${error.message}`)
     setRows(data ?? [])
     setLoading(false)
-  }, [dateFrom, dateTo])
+  }, [dateFrom, dateTo, company?.id])
 
   useEffect(() => { fetch() }, [fetch])
 
@@ -170,11 +171,12 @@ function OutboundLogs() {
   const [dateFrom, setDateFrom] = useState(defaultDateFrom())
   const [dateTo,   setDateTo]   = useState(todayStr())
   const [keyword,  setKeyword]  = useState('')
+  const { company } = useCompany() ?? {}
 
   const fetch = useCallback(async () => {
     setLoading(true)
     setDbError('')
-    const { data, error } = await supabase
+    let q = supabase
       .from('outbound_logs')
       .select(`
         id, tier, side, created_at, operator, note,
@@ -189,13 +191,12 @@ function OutboundLogs() {
       `)
       .gte('created_at', `${dateFrom}T00:00:00`)
       .lte('created_at', `${dateTo}T23:59:59`)
-      .order('created_at', { ascending: false })
-      .limit(PAGE_SZ)
+    const { data, error } = await q.order('created_at', { ascending: false }).limit(PAGE_SZ)
 
     if (error) setDbError(`DB 오류: ${error.message}`)
     setRows(data ?? [])
     setLoading(false)
-  }, [dateFrom, dateTo])
+  }, [dateFrom, dateTo, company?.id])
 
   useEffect(() => { fetch() }, [fetch])
 

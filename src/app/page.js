@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from 'react'
 import { supabase } from '@/lib/supabase'
+import { useCompany } from '@/context/CompanyContext'
 import Link from 'next/link'
 
 function ArcGauge({ value }) {
@@ -121,12 +122,14 @@ export default function DashboardPage() {
   const [loading, setLoading]         = useState(true)
   const [error, setError]             = useState('')
   const [lastUpdated, setLastUpdated] = useState(null)
+  const { company } = useCompany() ?? {}
 
   const fetchZoneStats = useCallback(async () => {
-    const { data, error: err } = await supabase
+    let q = supabase
       .from('zones')
       .select(`id, code, name, locations ( id, pallets ( id, status ) )`)
-      .order('code')
+    if (company?.id) q = q.eq('company_id', company.id)
+    const { data, error: err } = await q.order('code')
 
     if (err) { setError(err.message); setLoading(false); return }
 
@@ -148,7 +151,7 @@ export default function DashboardPage() {
     setZones(computed)
     setLastUpdated(new Date())
     setLoading(false)
-  }, [])
+  }, [company?.id])
 
   useEffect(() => {
     fetchZoneStats()

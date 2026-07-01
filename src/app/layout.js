@@ -3,6 +3,8 @@ import { cookies } from 'next/headers'
 import ErrorBoundary from '@/components/ErrorBoundary'
 import Navigation from '@/components/Navigation'
 import { verifyToken } from '@/lib/auth'
+import { CompanyProvider } from '@/context/CompanyContext'
+import { getSupabaseAdmin } from '@/lib/supabase-server'
 
 export const dynamic = 'force-dynamic'
 
@@ -17,10 +19,37 @@ export default async function RootLayout({ children }) {
   const userToken   = jar.get('wms_user')?.value
   const userPayload = userToken ? await verifyToken(userToken) : null
 
-  const isLoggedIn  = devAdmin || userPayload !== null
-  const isAdmin     = devAdmin || userPayload?.role === 'admin'
-  const displayName = devAdmin ? '개발관리자' : (userPayload?.displayName ?? null)
-  const position    = devAdmin ? 'DEV_ADMIN' : (userPayload?.position ?? '')
+  const isLoggedIn   = devAdmin || userPayload !== null
+  const isSuperAdmin = userPayload?.role === 'superadmin'
+  const isAdmin      = devAdmin || userPayload?.role === 'admin' || isSuperAdmin
+  const displayName  = devAdmin ? '개발관리자' : (userPayload?.displayName ?? null)
+  const position     = devAdmin ? 'DEV_ADMIN' : (userPayload?.position ?? '')
+
+  // 회사 정보 결정
+  let activeCompany = null
+  let allCompanies  = []
+
+  if (isLoggedIn && !devAdmin) {
+    const db = getSupabaseAdmin()
+
+    if (isSuperAdmin) {
+      // superadmin: 선택된 회사 쿠키 확인
+      const { data: cos } = await db.from('companies').select('id, code, name').order('code')
+      allCompanies = cos ?? []
+
+      const activeCid = jar.get('wms_active_company')?.value
+      if (activeCid) {
+        activeCompany = allCompanies.find(c => c.id === Number(activeCid)) ?? null
+      }
+    } else if (userPayload?.companyId) {
+      // 일반 사용자: JWT의 company 정보
+      activeCompany = {
+        id:   userPayload.companyId,
+        code: userPayload.companyCode,
+        name: userPayload.companyName,
+      }
+    }
+  }
 
   return (
     <html lang="ko">
@@ -36,7 +65,6 @@ export default async function RootLayout({ children }) {
         className={isLoggedIn ? 'flex h-screen overflow-hidden antialiased' : 'min-h-screen antialiased'}
         style={{ background: '#0C0E13', fontFamily: "'Space Grotesk', ui-sans-serif, sans-serif" }}
       >
-        {/* 전역 도트 그리드 배경 */}
         <div
           className="fixed inset-0 pointer-events-none -z-10"
           style={{
@@ -45,17 +73,23 @@ export default async function RootLayout({ children }) {
           }}
         />
 
-        {isLoggedIn && (
-          <Navigation isAdmin={isAdmin} displayName={displayName} position={position} />
-        )}
+        <CompanyProvider
+          company={activeCompany}
+          isSuperAdmin={isSuperAdmin}
+          companies={allCompanies}
+        >
+          {isLoggedIn && (
+            <Navigation isAdmin={isAdmin} displayName={displayName} position={position} />
+          )}
 
-        <div className={isLoggedIn ? 'flex-1 min-w-0 flex flex-col' : ''}>
-          <main className={isLoggedIn ? 'flex-1 overflow-y-auto p-5 sm:p-6' : ''}>
-            <ErrorBoundary>
-              {children}
-            </ErrorBoundary>
-          </main>
-        </div>
+          <div className={isLoggedIn ? 'flex-1 min-w-0 flex flex-col' : ''}>
+            <main className={isLoggedIn ? 'flex-1 overflow-y-auto p-5 sm:p-6' : ''}>
+              <ErrorBoundary>
+                {children}
+              </ErrorBoundary>
+            </main>
+          </div>
+        </CompanyProvider>
       </body>
     </html>
   )

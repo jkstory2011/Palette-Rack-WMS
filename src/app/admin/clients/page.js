@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback, useRef } from 'react'
 import { supabase } from '@/lib/supabase'
+import { useCompany } from '@/context/CompanyContext'
 
 const EMPTY = {
   name: '', code: '', ceo: '', business_no: '',
@@ -64,6 +65,7 @@ export default function ClientsPage() {
   const [copied, setCopied]                 = useState(false)
   const fileRef     = useRef(null)
   const editFileRef = useRef(null)
+  const { company } = useCompany() ?? {}
 
   // 스토리지 버킷 자동 생성
   useEffect(() => {
@@ -71,13 +73,15 @@ export default function ClientsPage() {
   }, [])
 
   const fetchClients = useCallback(async () => {
-    const { data, error: err } = await supabase.from('clients').select('*').order('name')
+    let q = supabase.from('clients').select('*')
+    if (company?.id) q = q.eq('company_id', company.id)
+    const { data, error: err } = await q.order('name')
     if (err?.message?.includes('business_license_url')) {
       setNeedsMigration(true); return
     }
     setNeedsMigration(false)
     setClients(data ?? [])
-  }, [])
+  }, [company?.id])
 
   useEffect(() => { fetchClients() }, [fetchClients])
 
@@ -129,6 +133,7 @@ export default function ClientsPage() {
         email: form.email.trim() || null, main_phone: form.main_phone.trim() || null,
         contact: form.contact.trim() || null, phone: form.phone.trim() || null,
         note: form.note.trim() || null, business_license_url: license_url,
+        company_id: company?.id ?? null,
       })
       if (err) return setError(err.code === '23505' ? '이미 존재하는 화주사명 또는 코드입니다.' : err.message)
       await fetchClients(); resetForm()
@@ -404,6 +409,7 @@ function ClientExcelModal({ onClose, onSuccess }) {
   const [importing, setImporting]   = useState(false)
   const [result, setResult]         = useState(null)
   const [parseError, setParseError] = useState('')
+  const { company } = useCompany() ?? {}
 
   useEffect(() => {
     const h = e => { if (e.key === 'Escape') onClose() }
@@ -462,6 +468,7 @@ function ClientExcelModal({ onClose, onSuccess }) {
         name: row.name, code, ceo: row.ceo, business_no: row.business_no,
         email: row.email, main_phone: row.main_phone,
         contact: row.contact, phone: row.phone, note: row.note,
+        company_id: company?.id ?? null,
       })
       if (!error) { success++; autoIdx++ }
       else if (error.code === '23505') skipped++

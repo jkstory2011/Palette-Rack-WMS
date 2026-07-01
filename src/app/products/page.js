@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback, useRef, useMemo } from 'react'
 import { supabase } from '@/lib/supabase'
+import { useCompany } from '@/context/CompanyContext'
 
 const EMPTY_FORM = {
   code: '', name: '', unit: 'BOX', barcode: '',
@@ -24,14 +25,16 @@ export default function ProductsPage() {
   const [editForm, setEditForm]               = useState({})
   const [clientsList, setClientsList]         = useState([])
   const allCheckRef = useRef(null)
+  const { company } = useCompany() ?? {}
 
   useEffect(() => {
-    supabase.from('clients').select('name').order('name')
-      .then(({ data }) => setClientsList((data ?? []).map(c => c.name)))
-  }, [])
+    let q = supabase.from('clients').select('name')
+    if (company?.id) q = q.eq('company_id', company.id)
+    q.order('name').then(({ data }) => setClientsList((data ?? []).map(c => c.name)))
+  }, [company?.id])
 
   async function fetchProducts() {
-    const { data } = await supabase
+    let q = supabase
       .from('products')
       .select(`
         id, code, name, unit, barcode, client_name, expiry_at,
@@ -41,7 +44,8 @@ export default function ProductsPage() {
           pallets ( status, location_id, inbound_at )
         )
       `)
-      .order('created_at', { ascending: false })
+    if (company?.id) q = q.eq('company_id', company.id)
+    const { data } = await q.order('created_at', { ascending: false })
 
     const enriched = (data ?? []).map((p) => {
       const stored    = (p.pallet_items ?? []).filter((it) => it.pallets?.status === 'stored')
@@ -92,6 +96,7 @@ export default function ProductsPage() {
       expiry_at:     form.expiry_at             || null,
       mgmt_location: form.mgmt_location.trim() || null,
       box_qty:       form.box_qty ? Number(form.box_qty) : null,
+      company_id:    company?.id ?? null,
     })
     setSaving(false)
     if (err) {
@@ -459,6 +464,7 @@ function ExcelImportModal({ onClose, onSuccess }) {
   const [importing, setImporting]   = useState(false)
   const [result, setResult]         = useState(null)
   const [parseError, setParseError] = useState('')
+  const { company } = useCompany() ?? {}
 
   useEffect(() => {
     const handler = e => { if (e.key === 'Escape') onClose() }
@@ -543,6 +549,7 @@ function ExcelImportModal({ onClose, onSuccess }) {
         expiry_at:     row.expiry_at,
         mgmt_location: row.mgmt_location,
         box_qty:       row.box_qty,
+        company_id:    company?.id ?? null,
       })
       if (!error)             success++
       else if (error.code === '23505') skipped++

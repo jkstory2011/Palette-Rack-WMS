@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback } from 'react'
 import { supabase } from '@/lib/supabase'
 import { generateOrderNo } from '@/lib/utils/pallet'
+import { useCompany } from '@/context/CompanyContext'
 
 const STATUS_LABEL = {
   registered:  { label: '등록',   cls: 'bg-blue-600/20 text-[#F59E0B] border-blue-600/40' },
@@ -59,11 +60,13 @@ function RegisterTab({ onDone }) {
   const [saving, setSaving]   = useState(false)
   const [error, setError]     = useState('')
   const [success, setSuccess] = useState('')
+  const { company } = useCompany() ?? {}
 
   useEffect(() => {
-    supabase.from('products').select('id, code, name, unit').order('name')
-      .then(({ data }) => setProducts(data ?? []))
-  }, [])
+    let q = supabase.from('products').select('id, code, name, unit')
+    if (company?.id) q = q.eq('company_id', company.id)
+    q.order('name').then(({ data }) => setProducts(data ?? []))
+  }, [company?.id])
 
   function updateItem(i, field, val) {
     setForm(f => {
@@ -91,6 +94,7 @@ function RegisterTab({ onDone }) {
           client_name:    form.clientName || null,
           scheduled_date: form.scheduledDate || null,
           note:           form.note || null,
+          company_id:     company?.id ?? null,
         })
         .select('id').single()
       if (oErr) throw oErr
@@ -181,18 +185,20 @@ function InProgressTab({ onDone }) {
   const [orders, setOrders]   = useState([])
   const [loading, setLoading] = useState(true)
   const [updating, setUpdating] = useState(null)
+  const { company } = useCompany() ?? {}
 
   const fetchOrders = useCallback(async () => {
     setLoading(true)
-    const { data } = await supabase
+    let q = supabase
       .from('production_orders')
       .select(`id, order_no, status, client_name, scheduled_date, note, created_at, started_at,
                production_order_items ( target_qty, produced_qty, products ( name, unit ) )`)
       .in('status', ['registered', 'in_progress'])
-      .order('created_at', { ascending: false })
+    if (company?.id) q = q.eq('company_id', company.id)
+    const { data } = await q.order('created_at', { ascending: false })
     setOrders(data ?? [])
     setLoading(false)
-  }, [])
+  }, [company?.id])
 
   useEffect(() => { fetchOrders() }, [fetchOrders])
 
@@ -319,18 +325,20 @@ function ProductionOrderCard({ order, onStart, onComplete, isUpdating }) {
 function CompletedTab() {
   const [orders, setOrders]   = useState([])
   const [loading, setLoading] = useState(true)
+  const { company } = useCompany() ?? {}
 
   useEffect(() => {
     setLoading(true)
-    supabase
+    let q = supabase
       .from('production_orders')
       .select(`id, order_no, client_name, completed_at, note,
                production_order_items ( target_qty, produced_qty, products ( name, unit ) )`)
       .eq('status', 'completed')
-      .order('completed_at', { ascending: false })
+    if (company?.id) q = q.eq('company_id', company.id)
+    q.order('completed_at', { ascending: false })
       .limit(50)
       .then(({ data }) => { setOrders(data ?? []); setLoading(false) })
-  }, [])
+  }, [company?.id])
 
   if (loading) return <p className="text-center text-slate-400 py-12 animate-pulse">불러오는 중...</p>
   if (orders.length === 0)
