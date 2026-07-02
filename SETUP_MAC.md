@@ -74,3 +74,11 @@ git push origin main
 | `.env.local` | 양쪽 PC 모두 직접 생성 필요 (위 4번 참고) |
 | `node_modules` | 양쪽 PC 모두 `npm install` 각자 실행 |
 | Supabase DB | 클라우드 공유 — 어디서 작업해도 데이터 동일 |
+
+---
+
+## Windows 작업 시 주의사항 (2026-07-02)
+
+**절대 Google Drive 동기화 폴더(`내 드라이브`, H: 드라이브 등) 안에서 작업하지 말 것.**
+
+`npm install` / `next dev`가 대량의 작은 파일을 빠르게 쓰는데, Google Drive 스트리밍 드라이브가 이를 못 버티고 파일이 0바이트로 잘려서 저장되는 문제가 발생함 (`node_modules` 내 18,000개 이상 파일 손상, 재부팅해도 재발). 반드시 로컬 디스크(`D:\Palette Rack WMS`)에서만 작업할 것.
