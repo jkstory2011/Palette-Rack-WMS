@@ -3,6 +3,7 @@
 import { usePathname } from 'next/navigation'
 import { useState, useRef, useEffect } from 'react'
 import { useCompany } from '@/context/CompanyContext'
+import { performLogout } from '@/lib/logout'
 
 // ── SVG 아이콘
 const IconGrid       = () => <svg width="15" height="15" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><rect x="1" y="1" width="6" height="6" rx="1"/><rect x="9" y="1" width="6" height="6" rx="1"/><rect x="1" y="9" width="6" height="6" rx="1"/><rect x="9" y="9" width="6" height="6" rx="1"/></svg>
@@ -371,8 +372,7 @@ function LogoutBtn() {
 
   async function handleLogout() {
     setLoading(true)
-    try { await fetch('/api/auth/logout', { method: 'POST' }) }
-    finally { window.location.href = '/login' }
+    await performLogout()
   }
 
   return (
