@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { POSITIONS } from '@/lib/positions'
 
 export default function SignupPage() {
   const [form, setForm]     = useState({ username: '', displayName: '', position: '', password: '', confirm: '' })
@@ -91,15 +92,7 @@ export default function SignupPage() {
               className="w-full bg-gray-800 border border-gray-700 rounded-xl px-4 py-3
                          text-white text-sm focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500">
               <option value="">선택 안 함 (사용자)</option>
-              <option value="사원">사원</option>
-              <option value="주임">주임</option>
-              <option value="대리">대리</option>
-              <option value="팀장">팀장</option>
-              <option value="과장">과장</option>
-              <option value="차장">차장</option>
-              <option value="부장">부장</option>
-              <option value="실장">실장</option>
-              <option value="대표">대표</option>
+              {POSITIONS.map(p => <option key={p} value={p}>{p}</option>)}
             </select>
           </div>
 

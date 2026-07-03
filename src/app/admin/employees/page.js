@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback, useRef } from 'react'
 import { supabase } from '@/lib/supabase'
 import { useCompany } from '@/context/CompanyContext'
+import { POSITIONS as BASE_POSITIONS } from '@/lib/positions'
 
 const EMPTY = {
   emp_code: '', name: '', department: '', position: '',
@@ -10,7 +11,7 @@ const EMPTY = {
 }
 
 const DEPARTMENTS = ['', '관리', '입고팀', '출고팀', '생산팀', '물류팀', '영업팀', '기타']
-const POSITIONS   = ['', '사원', '주임', '대리', '팀장', '과장', '차장', '부장', '실장', '대표']
+const POSITIONS   = ['', ...BASE_POSITIONS]
 
 const SETUP_SQL = `-- Supabase SQL Editor에서 실행
 CREATE TABLE IF NOT EXISTS employees (

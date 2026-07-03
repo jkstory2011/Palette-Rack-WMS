@@ -2,8 +2,9 @@
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
+import { POSITIONS as BASE_POSITIONS } from '@/lib/positions'
 
-const POSITIONS = ['사용자', '사원', '주임', '대리', '팀장', '과장', '차장', '부장', '실장', '대표']
+const POSITIONS = ['사용자', ...BASE_POSITIONS]
 
 function PositionSelect({ user, onSave }) {
   return (
