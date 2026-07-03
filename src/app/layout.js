@@ -2,6 +2,7 @@ import './globals.css'
 import { cookies } from 'next/headers'
 import ErrorBoundary from '@/components/ErrorBoundary'
 import Navigation from '@/components/Navigation'
+import IdleTimeoutWatcher from '@/components/IdleTimeoutWatcher'
 import { verifyToken } from '@/lib/auth'
 import { CompanyProvider } from '@/context/CompanyContext'
 import { getSupabaseAdmin } from '@/lib/supabase-server'
@@ -79,7 +80,10 @@ export default async function RootLayout({ children }) {
           companies={allCompanies}
         >
           {isLoggedIn && (
-            <Navigation isAdmin={isAdmin} displayName={displayName} position={position} />
+            <>
+              <Navigation isAdmin={isAdmin} displayName={displayName} position={position} />
+              <IdleTimeoutWatcher />
+            </>
           )}
 
           <div className={isLoggedIn ? 'flex-1 min-w-0 flex flex-col' : ''}>
