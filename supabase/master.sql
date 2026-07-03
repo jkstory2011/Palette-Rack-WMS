@@ -416,3 +416,15 @@ VALUES (
   'superadmin', true, true, NULL
 )
 ON CONFLICT (username) DO NOTHING;
+
+-- ──────────────────────────────────────────
+-- 19. 직급별 관리권한 (회사별 설정)
+-- ──────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS wms_position_admin_grants (
+  company_id INTEGER NOT NULL REFERENCES companies(id),
+  position   TEXT    NOT NULL,
+  PRIMARY KEY (company_id, position)
+);
+ALTER TABLE wms_position_admin_grants ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "allow_all" ON wms_position_admin_grants;
+CREATE POLICY "allow_all" ON wms_position_admin_grants FOR ALL TO anon, authenticated USING (true) WITH CHECK (true);
