@@ -43,6 +43,18 @@ export async function POST(req) {
     company = co ?? null
   }
 
+  // 직급 기반 관리권한 조회 (회사별 설정)
+  let isPositionAdmin = false
+  if (user.company_id) {
+    const { data: grant } = await db
+      .from('wms_position_admin_grants')
+      .select('position')
+      .eq('company_id', user.company_id)
+      .eq('position', user.position)
+      .maybeSingle()
+    isPositionAdmin = grant !== null
+  }
+
   const token = await signToken({
     sub:         user.id,
     username:    user.username,
@@ -52,6 +64,7 @@ export async function POST(req) {
     companyId:   user.company_id ?? null,
     companyCode: company?.code ?? null,
     companyName: company?.name ?? null,
+    isPositionAdmin,
   })
 
   const res = NextResponse.json({ ok: true, role: user.role })
