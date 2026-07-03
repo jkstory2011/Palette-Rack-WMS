@@ -1,4 +1,7 @@
 export async function performLogout() {
-  await fetch('/api/auth/logout', { method: 'POST' })
-  window.location.href = '/login'
+  try {
+    await fetch('/api/auth/logout', { method: 'POST' })
+  } finally {
+    window.location.href = '/login'
+  }
 }
