@@ -17,7 +17,7 @@ export async function middleware(request) {
 
   const isAuthed      = devAdmin || user !== null
   const isSuperAdmin  = user?.role === 'superadmin'
-  const isAdmin       = devAdmin || user?.role === 'admin' || isSuperAdmin
+  const isAdmin       = devAdmin || user?.role === 'admin' || isSuperAdmin || user?.isPositionAdmin === true
 
   if (ADMIN_PATHS.some(p => pathname.startsWith(p))) {
     if (!isAdmin) {

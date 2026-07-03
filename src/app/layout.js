@@ -22,7 +22,7 @@ export default async function RootLayout({ children }) {
 
   const isLoggedIn   = devAdmin || userPayload !== null
   const isSuperAdmin = userPayload?.role === 'superadmin'
-  const isAdmin      = devAdmin || userPayload?.role === 'admin' || isSuperAdmin
+  const isAdmin      = devAdmin || userPayload?.role === 'admin' || isSuperAdmin || userPayload?.isPositionAdmin === true
   const displayName  = devAdmin ? '개발관리자' : (userPayload?.displayName ?? null)
   const position     = devAdmin ? 'DEV_ADMIN' : (userPayload?.position ?? '')
 
