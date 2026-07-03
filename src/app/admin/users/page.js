@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { POSITIONS as BASE_POSITIONS } from '@/lib/positions'
+import { useCompany } from '@/context/CompanyContext'
 
 const POSITIONS = ['사용자', ...BASE_POSITIONS]
 
@@ -15,6 +16,59 @@ function PositionSelect({ user, onSave }) {
     >
       {POSITIONS.map(p => <option key={p} value={p}>{p}</option>)}
     </select>
+  )
+}
+
+function PositionPermissionSettings() {
+  const { company } = useCompany() ?? {}
+  const [adminPositions, setAdminPositions] = useState([])
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    if (!company?.id) { setLoading(false); return }
+    setLoading(true)
+    fetch(`/api/admin/position-permissions?companyId=${company.id}`)
+      .then(res => res.json())
+      .then(data => setAdminPositions(Array.isArray(data) ? data : []))
+      .finally(() => setLoading(false))
+  }, [company?.id])
+
+  async function toggle(position, checked) {
+    setAdminPositions(prev => checked ? [...prev, position] : prev.filter(p => p !== position))
+    try {
+      const res = await fetch('/api/admin/position-permissions', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ companyId: company.id, position, isAdmin: checked }),
+      })
+      if (!res.ok) throw new Error()
+    } catch {
+      setAdminPositions(prev => checked ? prev.filter(p => p !== position) : [...prev, position])
+    }
+  }
+
+  if (!company?.id) return null
+
+  return (
+    <div className="wms-card space-y-3">
+      <h2 className="text-sm font-bold text-white">직급별 관리권한 ({company.name})</h2>
+      {loading ? (
+        <p className="text-xs text-gray-500">불러오는 중...</p>
+      ) : (
+        <div className="flex flex-wrap gap-3">
+          {BASE_POSITIONS.map(pos => (
+            <label key={pos} className="flex items-center gap-1.5 text-sm text-gray-300">
+              <input
+                type="checkbox"
+                checked={adminPositions.includes(pos)}
+                onChange={e => toggle(pos, e.target.checked)}
+              />
+              {pos}
+            </label>
+          ))}
+        </div>
+      )}
+    </div>
   )
 }
 
@@ -183,6 +237,8 @@ export default function UsersPage() {
         <span className="text-slate-700">/</span>
         <h1 className="text-2xl font-black text-white tracking-tight">👥 회원 관리</h1>
       </div>
+
+      <PositionPermissionSettings />
 
       {/* 현황 카드 */}
       <div className="grid grid-cols-4 gap-3">
