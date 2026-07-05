@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { verifyToken } from '@/lib/auth'
 
-const PUBLIC_PATHS = ['/login', '/signup', '/api/auth']
+const PUBLIC_PATHS = ['/login', '/signup', '/api/auth', '/api/control-tower-summary']
 const ADMIN_PATHS  = ['/admin', '/api/admin']
 
 export async function middleware(request) {
