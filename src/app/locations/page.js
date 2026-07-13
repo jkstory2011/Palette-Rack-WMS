@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback, useMemo, useRef } from 'react'
 import { supabase } from '@/lib/supabase'
 import { useCompany } from '@/context/CompanyContext'
+import LocationLabelPrinter from '@/components/LocationLabelPrinter'
 
 const TABS = { ZONE: 'zone', PALLET: 'pallet', PRODUCT: 'product' }
 
@@ -319,6 +320,7 @@ function PalletLocationTab() {
   const [editingId, setEditingId]   = useState(null)
   const [editForm, setEditForm]     = useState({ code: '', grid_x: '', grid_y: '', aisle: '' })
   const [selectedIds, setSelectedIds] = useState(new Set())
+  const [printLocation, setPrintLocation] = useState(null)
   const allCheckRef = useRef(null)
   const { company } = useCompany() ?? {}
 
@@ -358,7 +360,7 @@ function PalletLocationTab() {
   const fetchLocations = useCallback(async (id) => {
     if (!id) { setLocations([]); return }
     const { data } = await supabase.from('locations')
-      .select('id, code, grid_x, grid_y, aisle, is_active, pallets(id, status)')
+      .select('id, code, grid_x, grid_y, aisle, is_active, slot_config, pallets(id, status)')
       .eq('zone_id', id).order('grid_y').order('grid_x')
     // pallets 배열에 status 포함 → 활성 수량 계산용
     setLocations(data ?? [])
@@ -620,6 +622,8 @@ function PalletLocationTab() {
                           </button>
                         </td>
                         <td className="py-2.5 text-right whitespace-nowrap">
+                          <button onClick={() => setPrintLocation(l)}
+                            className="text-xs text-gray-600 hover:text-blue-400 transition-colors px-2 py-1 opacity-0 group-hover:opacity-100">🏷 라벨</button>
                           <button onClick={() => startEdit(l)}
                             className="text-xs text-gray-600 hover:text-[#FBBF24] transition-colors px-2 py-1 opacity-0 group-hover:opacity-100">수정</button>
                           <button onClick={() => handleDelete(l)}
@@ -643,6 +647,10 @@ function PalletLocationTab() {
           existingSlots={new Set(locations.map(l => `${l.grid_x}-${l.grid_y}`))}
           onClose={() => setShowBulk(false)}
           onSuccess={() => { setShowBulk(false); fetchLocations(zoneId) }} />
+      )}
+
+      {printLocation && (
+        <LocationLabelPrinter key={printLocation.id} location={printLocation} onClose={() => setPrintLocation(null)} />
       )}
     </div>
   )
