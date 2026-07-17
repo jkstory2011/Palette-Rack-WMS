@@ -385,11 +385,15 @@ function InstructModal({ order, zones, onClose, onComplete }) {
       return
     }
 
-    const { data: occupied } = await supabase
+    const { data: occupied, error: occErr } = await supabase
       .from('pallets').select('id')
       .eq('location_id', loc.id).eq('tier', tier).eq('side', side)
       .in('status', ['stored', 'pending']).maybeSingle()
 
+    if (occErr) {
+      setError('슬롯 점유 확인 중 오류가 발생했습니다. 다시 시도해주세요.')
+      return
+    }
     if (occupied) {
       setError('이미 사용 중인 슬롯입니다.')
       return
