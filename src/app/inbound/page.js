@@ -5,6 +5,7 @@ import { supabase } from '@/lib/supabase'
 import { generatePalletCodes, generateOrderNo } from '@/lib/utils/pallet'
 import JsBarcode from 'jsbarcode'
 import { useCompany } from '@/context/CompanyContext'
+import BarcodeInput from '@/components/BarcodeInput'
 
 const TIERS = [4, 3, 2, 1]
 const SIDES = ['L', 'R']
@@ -286,6 +287,7 @@ function InstructModal({ order, zones, onClose, onComplete }) {
   const [confirming, setConfirming]     = useState(false)
   const [error, setError]               = useState('')
   const [done, setDone]                 = useState(false)
+  const [scanValues, setScanValues] = useState({})   // { [rowIndex]: 입력 중인 텍스트 }
 
   useEffect(() => {
     const handler = e => { if (e.key === 'Escape') onClose() }
@@ -347,6 +349,56 @@ function InstructModal({ order, zones, onClose, onComplete }) {
       setError(err.message)
     }
     setAssigning(false)
+  }
+
+  async function handleSlotScan(i, code) {
+    setError('')
+    const trimmed = code.trim()
+    const m = trimmed.match(/^(.+)-(\d)([LR])$/)
+    if (!m) {
+      setError('올바른 슬롯 코드가 아닙니다. (예: A-01-4L)')
+      return
+    }
+    const [, locationCode, tierStr, side] = m
+    const tier = Number(tierStr)
+
+    const { data: loc, error: locErr } = await supabase
+      .from('locations').select('id, code, slot_config, is_active')
+      .eq('code', locationCode).maybeSingle()
+
+    if (locErr || !loc || !loc.is_active) {
+      setError('존재하지 않는 로케이션입니다.')
+      return
+    }
+
+    const usableSides = loc.slot_config === 'L' ? ['L'] : loc.slot_config === 'R' ? ['R'] : SIDES
+    if (!usableSides.includes(side)) {
+      setError('이 랙에서 사용할 수 없는 슬롯입니다.')
+      return
+    }
+
+    const dupInBatch = assignment.some((s, idx) =>
+      idx !== i && s.locationId === loc.id && s.tier === tier && s.side === side
+    )
+    if (dupInBatch) {
+      setError('이미 이번 배치에서 사용 중인 슬롯입니다.')
+      return
+    }
+
+    const { data: occupied } = await supabase
+      .from('pallets').select('id')
+      .eq('location_id', loc.id).eq('tier', tier).eq('side', side)
+      .in('status', ['stored', 'pending']).maybeSingle()
+
+    if (occupied) {
+      setError('이미 사용 중인 슬롯입니다.')
+      return
+    }
+
+    setAssignment(prev => prev.map((s, idx) =>
+      idx === i ? { locationId: loc.id, locationCode: loc.code, tier, side } : s
+    ))
+    setScanValues(prev => ({ ...prev, [i]: '' }))
   }
 
   async function handleConfirm() {
@@ -472,6 +524,7 @@ function InstructModal({ order, zones, onClose, onComplete }) {
                           <th className="px-3 py-2 text-left">로케이션</th>
                           <th className="px-3 py-2 text-center">단</th>
                           <th className="px-3 py-2 text-center">좌/우</th>
+                          <th className="px-3 py-2 text-left">직접 지정</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-white/[0.06]">
@@ -485,6 +538,14 @@ function InstructModal({ order, zones, onClose, onComplete }) {
                               <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${
                                 slot.side === 'L' ? 'bg-purple-600/20 text-purple-300' : 'bg-orange-600/20 text-orange-300'
                               }`}>{slot.side === 'L' ? '좌' : '우'}</span>
+                            </td>
+                            <td className="px-3 py-2">
+                              <BarcodeInput
+                                value={scanValues[i] ?? ''}
+                                onChange={v => setScanValues(prev => ({ ...prev, [i]: v }))}
+                                onScan={code => handleSlotScan(i, code)}
+                                placeholder="슬롯 스캔"
+                              />
                             </td>
                           </tr>
                         ))}
