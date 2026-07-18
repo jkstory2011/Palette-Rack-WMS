@@ -36,6 +36,7 @@ export default function LocationLabelPrinter({ location, onClose }) {
   const slots = buildSlots(location)
   const [current, setCurrent] = useState(0)
   const [mounted, setMounted] = useState(false)
+  const [printMode, setPrintMode] = useState('all')   // 'all' | 'single'
   const previewRef = useRef(null)
   const printRefs  = useRef([])
 
@@ -53,8 +54,14 @@ export default function LocationLabelPrinter({ location, onClose }) {
     })
   }, [mounted]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  function handlePrint() {
-    window.print()
+  function handlePrintAll() {
+    setPrintMode('all')
+    setTimeout(() => window.print(), 0)
+  }
+
+  function handlePrintCurrent() {
+    setPrintMode('single')
+    setTimeout(() => window.print(), 0)
   }
 
   if (slots.length === 0) {
@@ -76,7 +83,10 @@ export default function LocationLabelPrinter({ location, onClose }) {
   const printPortal = mounted ? createPortal(
     <div id="wms-slot-label-print">
       {slots.map((s, i) => (
-        <div key={s.slotCode} style={{ pageBreakAfter: i < slots.length - 1 ? 'always' : 'auto' }}>
+        <div key={s.slotCode} style={{
+          display: printMode === 'single' && i !== current ? 'none' : undefined,
+          pageBreakAfter: (printMode === 'all' && i < slots.length - 1) ? 'always' : 'auto',
+        }}>
           <SlotLabelContent location={location} slot={s} barcodeRef={el => { printRefs.current[i] = el }} />
         </div>
       ))}
@@ -127,18 +137,24 @@ export default function LocationLabelPrinter({ location, onClose }) {
             </button>
           </div>
 
-          <div className="flex gap-3 mt-3">
-            <button onClick={onClose}
-              className="flex-1 py-3 rounded-xl border border-gray-300 text-gray-600
-                         hover:bg-gray-100 font-medium transition-colors">
-              취소
+          <div className="flex gap-2 mt-3">
+            <button onClick={handlePrintCurrent}
+              className="flex-1 py-3 rounded-xl bg-gray-700 hover:bg-gray-600
+                         text-white font-bold text-sm transition-colors">
+              🖨 이 슬롯만 인쇄
             </button>
-            <button onClick={handlePrint}
+            <button onClick={handlePrintAll}
               className="flex-1 py-3 rounded-xl bg-blue-600 hover:bg-blue-500
-                         text-white font-bold transition-colors">
-              🖨 인쇄
+                         text-white font-bold text-sm transition-colors">
+              🖨 전체 인쇄 ({slots.length}장)
             </button>
           </div>
+
+          <button onClick={onClose}
+            className="w-full py-2.5 mt-2 rounded-xl border border-gray-300 text-gray-600
+                       hover:bg-gray-100 font-medium text-sm transition-colors">
+            취소
+          </button>
         </div>
       </div>
 
