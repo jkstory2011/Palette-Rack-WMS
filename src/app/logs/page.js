@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState, useCallback } from 'react'
+import { useSearchParams } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { useCompany } from '@/context/CompanyContext'
 
@@ -8,10 +9,8 @@ const TABS    = { IN: 'inbound', OUT: 'outbound' }
 const PAGE_SZ = 50
 
 export default function LogsPage() {
-  const [tab, setTab] = useState(() => {
-    if (typeof window === 'undefined') return TABS.IN
-    return new URLSearchParams(window.location.search).get('tab') || TABS.IN
-  })
+  const searchParams = useSearchParams()
+  const [tab, setTab] = useState(() => searchParams.get('tab') || TABS.IN)
 
   return (
     <div className="max-w-5xl mx-auto space-y-5">

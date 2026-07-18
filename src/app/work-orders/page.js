@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState, useRef, useCallback } from 'react'
+import { useSearchParams } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import JsBarcode from 'jsbarcode'
 import { useCompany } from '@/context/CompanyContext'
@@ -42,10 +43,8 @@ const ACTION_META = {
 }
 
 export default function WorkOrdersPage() {
-  const [tab, setTab] = useState(() => {
-    if (typeof window === 'undefined') return 'orders'
-    return new URLSearchParams(window.location.search).get('tab') || 'orders'
-  })
+  const searchParams = useSearchParams()
+  const [tab, setTab] = useState(() => searchParams.get('tab') || 'orders')
 
   return (
     <div className="max-w-5xl mx-auto space-y-5">

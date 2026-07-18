@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState, useCallback, useRef } from 'react'
+import { useSearchParams } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { generatePalletCodes, generateOrderNo } from '@/lib/utils/pallet'
 import JsBarcode from 'jsbarcode'
@@ -11,10 +12,8 @@ const TIERS = [4, 3, 2, 1]
 const SIDES = ['L', 'R']
 
 export default function InboundPage() {
-  const [tab, setTab] = useState(() => {
-    if (typeof window === 'undefined') return 'register'
-    return new URLSearchParams(window.location.search).get('tab') || 'register'
-  })
+  const searchParams = useSearchParams()
+  const [tab, setTab] = useState(() => searchParams.get('tab') || 'register')
 
   const TABS = [
     { key: 'register', label: '① 입고등록' },

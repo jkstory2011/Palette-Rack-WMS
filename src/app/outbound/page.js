@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState, useCallback } from 'react'
+import { useSearchParams } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { getFifoLocations, pickFifoItems } from '@/lib/utils/fifo'
 import { generateOrderNo } from '@/lib/utils/pallet'
@@ -9,10 +10,8 @@ import { useCompany } from '@/context/CompanyContext'
 const SIDE_KO = { L: '좌(L)', R: '우(R)' }
 
 export default function OutboundPage() {
-  const [tab, setTab] = useState(() => {
-    if (typeof window === 'undefined') return 'register'
-    return new URLSearchParams(window.location.search).get('tab') || 'register'
-  })
+  const searchParams = useSearchParams()
+  const [tab, setTab] = useState(() => searchParams.get('tab') || 'register')
 
   const TABS = [
     { key: 'register', label: '① 출고등록' },

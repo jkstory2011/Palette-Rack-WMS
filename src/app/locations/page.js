@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState, useCallback, useMemo, useRef } from 'react'
+import { useSearchParams } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { useCompany } from '@/context/CompanyContext'
 import LocationLabelPrinter from '@/components/LocationLabelPrinter'
@@ -8,10 +9,8 @@ import LocationLabelPrinter from '@/components/LocationLabelPrinter'
 const TABS = { ZONE: 'zone', PALLET: 'pallet', PRODUCT: 'product' }
 
 export default function LocationsPage() {
-  const [tab, setTab] = useState(() => {
-    if (typeof window === 'undefined') return TABS.ZONE
-    return new URLSearchParams(window.location.search).get('tab') || TABS.ZONE
-  })
+  const searchParams = useSearchParams()
+  const [tab, setTab] = useState(() => searchParams.get('tab') || TABS.ZONE)
 
   return (
     <div className="max-w-5xl mx-auto space-y-5">

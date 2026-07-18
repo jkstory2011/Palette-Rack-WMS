@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState, useCallback } from 'react'
+import { useSearchParams } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { generateOrderNo } from '@/lib/utils/pallet'
 import { useCompany } from '@/context/CompanyContext'
@@ -12,10 +13,8 @@ const STATUS_LABEL = {
 }
 
 export default function ProductionPage() {
-  const [tab, setTab] = useState(() => {
-    if (typeof window === 'undefined') return 'register'
-    return new URLSearchParams(window.location.search).get('tab') || 'register'
-  })
+  const searchParams = useSearchParams()
+  const [tab, setTab] = useState(() => searchParams.get('tab') || 'register')
 
   const TABS = [
     { key: 'register',    label: '① 생산등록' },
