@@ -127,10 +127,6 @@ function ZoneTab() {
       <form onSubmit={handleAdd} className="wms-card space-y-4">
         <div className="flex items-center justify-between">
           <h2 className="text-sm font-semibold text-gray-400">신규 구역 등록</h2>
-          <button type="button" onClick={() => setShowBulk(true)}
-            className="px-4 py-2 rounded-xl bg-emerald-700 hover:bg-emerald-600 text-white text-sm font-semibold transition-colors">
-            📋 일괄 추가
-          </button>
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           <Field label="구역 코드 *">
@@ -143,7 +139,12 @@ function ZoneTab() {
           </Field>
         </div>
         {error && <p className="text-sm text-red-400">{error}</p>}
-        <div className="flex justify-end">
+        <div className="flex justify-between">
+          <button type="button" onClick={() => setShowBulk(true)}
+            className="px-8 py-3 rounded-xl bg-emerald-700 hover:bg-emerald-600
+                       text-white font-semibold transition-colors flex items-center gap-2">
+            📋 일괄 추가
+          </button>
           <button type="submit" disabled={saving} className={btnCls}>
             {saving ? '등록 중...' : '+ 구역 추가'}
           </button>
@@ -473,10 +474,6 @@ function PalletLocationTab() {
           <form onSubmit={handleAdd} className="wms-card space-y-4">
             <div className="flex items-center justify-between">
               <h2 className="text-sm font-semibold text-gray-400">로케이션 추가</h2>
-              <button type="button" onClick={() => setShowBulk(true)}
-                className="px-4 py-2 rounded-xl bg-emerald-700 hover:bg-emerald-600 text-white text-sm font-semibold transition-colors">
-                🔢 일괄 추가
-              </button>
             </div>
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
               <Field label="로케이션 코드 *">
@@ -499,7 +496,12 @@ function PalletLocationTab() {
               </Field>
             </div>
             {error && <p className="text-sm text-red-400">{error}</p>}
-            <div className="flex justify-end">
+            <div className="flex justify-between">
+              <button type="button" onClick={() => setShowBulk(true)}
+                className="px-8 py-3 rounded-xl bg-emerald-700 hover:bg-emerald-600
+                           text-white font-semibold transition-colors flex items-center gap-2">
+                🔢 일괄 추가
+              </button>
               <button type="submit" disabled={saving} className={btnCls}>
                 {saving ? '등록 중...' : '+ 로케이션 추가'}
               </button>
@@ -959,10 +961,6 @@ function ProductLocationTab() {
       <form onSubmit={handleAdd} className="wms-card space-y-4">
         <div className="flex items-center justify-between">
           <h2 className="text-sm font-semibold text-gray-400">신규 상품 로케이션 등록</h2>
-          <button type="button" onClick={() => setShowBulk(true)}
-            className="px-4 py-2 rounded-xl bg-emerald-700 hover:bg-emerald-600 text-white text-sm font-semibold transition-colors">
-            📋 일괄 추가
-          </button>
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           <Field label="로케이션 코드 *">
@@ -979,7 +977,12 @@ function ProductLocationTab() {
           </Field>
         </div>
         {error && <p className="text-sm text-red-400">{error}</p>}
-        <div className="flex justify-end">
+        <div className="flex justify-between">
+          <button type="button" onClick={() => setShowBulk(true)}
+            className="px-8 py-3 rounded-xl bg-emerald-700 hover:bg-emerald-600
+                       text-white font-semibold transition-colors flex items-center gap-2">
+            📋 일괄 추가
+          </button>
           <button type="submit" disabled={saving} className={btnCls}>
             {saving ? '등록 중...' : '+ 로케이션 추가'}
           </button>
