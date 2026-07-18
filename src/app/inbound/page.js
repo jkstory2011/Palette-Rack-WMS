@@ -270,6 +270,7 @@ function InstructTab({ onDone }) {
         <InstructModal
           order={instructing}
           zones={zones}
+          company={company}
           onClose={() => setInstructing(null)}
           onComplete={() => { setInstructing(null); fetchOrders(); onDone() }}
         />
@@ -279,7 +280,7 @@ function InstructTab({ onDone }) {
 }
 
 // 입고지시 모달: 로케이션 자동 배정
-function InstructModal({ order, zones, onClose, onComplete }) {
+function InstructModal({ order, zones, company, onClose, onComplete }) {
   const [selectedZone, setSelectedZone] = useState('')
   const [assignment, setAssignment]     = useState([])   // [{locationId, locationCode, tier, side}]
   const [palletCodes, setPalletCodes]   = useState([])
@@ -362,9 +363,17 @@ function InstructModal({ order, zones, onClose, onComplete }) {
     const [, locationCode, tierStr, side] = m
     const tier = Number(tierStr)
 
+    if (!company?.id) {
+      setError('회사 정보를 확인할 수 없습니다.')
+      return
+    }
+
     const { data: loc, error: locErr } = await supabase
-      .from('locations').select('id, code, slot_config, is_active')
-      .eq('code', locationCode).maybeSingle()
+      .from('locations')
+      .select('id, code, slot_config, is_active, zones!inner(company_id)')
+      .eq('code', locationCode)
+      .eq('zones.company_id', company.id)
+      .maybeSingle()
 
     if (locErr || !loc || !loc.is_active) {
       setError('존재하지 않는 로케이션입니다.')

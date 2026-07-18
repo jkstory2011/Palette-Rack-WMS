@@ -37,7 +37,7 @@ export default function LocationLabelPrinter({ location, onClose }) {
   const [current, setCurrent] = useState(0)
   const [mounted, setMounted] = useState(false)
   const previewRef = useRef(null)
-  const printRef   = useRef(null)
+  const printRefs  = useRef([])
 
   useEffect(() => { setMounted(true) }, [])
 
@@ -46,8 +46,12 @@ export default function LocationLabelPrinter({ location, onClose }) {
   }, [current, mounted]) // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
-    if (printRef.current && slots[current]) drawBarcode(printRef.current, slots[current].slotCode)
-  }, [current, mounted]) // eslint-disable-line react-hooks/exhaustive-deps
+    if (!mounted) return
+    slots.forEach((slot, i) => {
+      const el = printRefs.current[i]
+      if (el) drawBarcode(el, slot.slotCode)
+    })
+  }, [mounted]) // eslint-disable-line react-hooks/exhaustive-deps
 
   function handlePrint() {
     window.print()
@@ -71,7 +75,11 @@ export default function LocationLabelPrinter({ location, onClose }) {
 
   const printPortal = mounted ? createPortal(
     <div id="wms-slot-label-print">
-      <SlotLabelContent location={location} slot={slot} barcodeRef={printRef} />
+      {slots.map((s, i) => (
+        <div key={s.slotCode} style={{ pageBreakAfter: i < slots.length - 1 ? 'always' : 'auto' }}>
+          <SlotLabelContent location={location} slot={s} barcodeRef={el => { printRefs.current[i] = el }} />
+        </div>
+      ))}
     </div>,
     document.body
   ) : null
